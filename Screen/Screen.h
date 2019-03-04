@@ -3,6 +3,7 @@
 #include "arduino.h"
 #include "SPI.h"
 #include "RAM.h"
+#include "DisplayObject.h"
 
 #define COLS 128
 #define ROWS 8
@@ -34,7 +35,7 @@ class Screen{
 		Screen();
 		void init();
 		uint8_t testDraw(uint8_t*, int16_t, int16_t, uint8_t);
-		void draw(uint8_t);
+		void draw(uint8_t, uint8_t);
 		void writeBuffer();
 		void clearBuffer();
 		void setInverse(uint8_t);

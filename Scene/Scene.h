@@ -15,14 +15,13 @@ class Scene : public DisplayObject{
 	public:
 		Scene(uint8_t childSize) : DisplayObject(childSize){
 			pinMode(A2, INPUT);
+			adjustBrightness();
 		}
 				
-		uint8_t update(){
+		void onUpdate(){
 			myScreen.clearBuffer();
 			updateChild(this);
 			myScreen.writeBuffer();
-			
-			return true;
 		}
 		
 		void updateChild(DisplayObject* child){
@@ -31,7 +30,7 @@ class Scene : public DisplayObject{
 	
 			if(child->isVisible()){
 				if(myScreen.testDraw(child->getImage(), child->getGlobalX(), child->getGlobalY(), child->getMemory())){
-					myScreen.draw(child->isFlipped());
+					myScreen.draw(child->isFlipped(), child->getMaskType());
 				}
 				
 				if(child->getChildCount() > 0){

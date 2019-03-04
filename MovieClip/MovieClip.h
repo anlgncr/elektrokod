@@ -8,7 +8,7 @@ class MovieClip : public DisplayObject{
 	public:
 		MovieClip(uint8_t, uint8_t**, uint8_t, uint8_t);
 		
-		uint8_t update();
+		void onUpdate();
 		
 		void play();
 		void playFor(uint8_t);

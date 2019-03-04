@@ -17,8 +17,7 @@ MovieClip::MovieClip(uint8_t childSize, uint8_t **images, uint8_t frameCount, ui
 	RAM::write(&my_object->lastFrame, frameCount - 1);
 }
 
-uint8_t MovieClip::update()
-{	
+void MovieClip::onUpdate(){
 	if(isPlaying()){
 		uint8_t currentFrame = getCurrentFrame();
 		uint32_t changeTime = getFrameChangeTime(currentFrame);

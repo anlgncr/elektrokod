@@ -152,6 +152,9 @@ void DisplayObject::addChild(DisplayObject* child){
 }
 
 void DisplayObject::removeChild(DisplayObject* child){
+	if(!contains(child))
+		return;
+	
 	uint8_t childCount = getChildCount();
 	
 	for(uint8_t i=0; i<childCount; i++){
@@ -420,10 +423,17 @@ uint8_t DisplayObject::getChildRemoved(){
 	return RAM::read(&my_object->childRemoved);
 }
 
+uint8_t DisplayObject::getMaskType(){
+	return RAM::read(&my_object->maskType);
+}
+
 
 //------------------------------------------ SETTER -------|
 //------------------------------------------ ////// -------|
 
+void DisplayObject::setMaskType(uint8_t value){
+	RAM::write(&my_object->maskType, value);
+}
 
 void DisplayObject::setChildRemoved(uint8_t value){
 	RAM::write(&my_object->childRemoved, value);

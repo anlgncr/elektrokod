@@ -6,7 +6,7 @@
 #include <RAM.h>
 
 #define DEBOUNCE_TIME 40
-#define CS_BUTTON 0
+
 
 #define CODE_H	10
 #define CODE_G	9
@@ -32,17 +32,17 @@
 
 #define SPI_INPUT 0
 #define PARALEL_INPUT 1
-#define PARALEL_MASK 0x03
 
 
-class Button : public Updatable{
+
+class Button{
   public:
 	typedef void (*fPtr)(Button*);
 	Button(uint8_t, fPtr);
 		
 	void setInputType(uint8_t);
 	uint8_t getInputType();
-	uint8_t update();
+	void update(uint8_t);
 	bool buttonUp();
 	bool buttonDown();
 	bool buttonLongDown();

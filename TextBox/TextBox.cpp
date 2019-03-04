@@ -173,13 +173,6 @@ uint8_t* TextBox::getImageIndex(){
 	return (uint8_t*)RAM::readPtr(&my_object->imageIndex);
 }
 
-uint8_t TextBox::update(){
-	
-}
-
-void TextBox::getType(){
-	
-}
 
 
 

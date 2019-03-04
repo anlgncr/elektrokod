@@ -152,7 +152,7 @@ uint8_t Screen::testDraw(uint8_t* image, int16_t x, int16_t y, uint8_t memory){
 }	
 
 
-void Screen::draw(uint8_t flipped){ // draw after testDraw!!
+void Screen::draw(uint8_t flipped, uint8_t maskType){ // draw after testDraw!!
 	uint8_t image_start_col, image_end_col, buffer_start_col;
 	
 	if(my_object.x < 0){
@@ -220,13 +220,21 @@ void Screen::draw(uint8_t flipped){ // draw after testDraw!!
 			buffer_end_row = (my_object.y / 8) + (my_object.height / 8); // Taşma yok
 		}
 	}
-
-		
-	uint8_t(*image_array)[my_object.width];
-	image_array = (uint8_t(*)[my_object.width])(my_object.image + 2);
 	
 	uint8_t visible_width = image_end_col - image_start_col;
 	uint8_t temp_image[visible_width];
+	uint8_t image_start_row_copy = image_start_row;
+	
+	uint8_t(*image_array)[my_object.width];
+	
+	OVERDRAW:
+	image_start_row = image_start_row_copy;
+	if(maskType == IMAGE_NO_MASK || maskType == IMAGE_AUTO_MASK){
+		image_array = (uint8_t(*)[my_object.width])(my_object.image + 2);
+	}
+	else{
+		image_array = (uint8_t(*)[my_object.width])(my_object.image + 2 + my_object.width * (my_object.height / 8));
+	}
 
 	for(int16_t rows = buffer_start_row; rows < buffer_end_row; rows++)
 	{
@@ -244,20 +252,57 @@ void Screen::draw(uint8_t flipped){ // draw after testDraw!!
 				readArrayPgm(imageCurAdd, temp_image, visible_width);		
 		}
 		
-		if(rows >= 0){	
-			for(uint8_t i=0; i<visible_width; i++){
-				uint8_t image_mask = (buf[rows][buffer_start_col + i] & (0xFF >> (8 - image_shift))); 
-				buf[rows][buffer_start_col + i] = (temp_image[i] << image_shift) | image_mask;
+		
+		if(maskType == IMAGE_NO_MASK){
+			if(rows >= 0){	
+				for(uint8_t i=0; i<visible_width; i++){
+					buf[rows][buffer_start_col + i] |= (temp_image[i] << image_shift);
+				}
+			}
+			uint8_t lowerRow = rows + 1;
+			if(lowerRow < ROWS && image_shift){	
+				for(uint8_t i=0; i<visible_width; i++){
+					buf[lowerRow][buffer_start_col + i] |= (temp_image[i] >> (8 - image_shift));
+				}
 			}
 		}
-		uint8_t lowerRow = rows + 1;
-		if(lowerRow < ROWS && image_shift){	
-			for(uint8_t i=0; i<visible_width; i++){
-				uint8_t image_mask = (buf[lowerRow][buffer_start_col + i] & (0xFF << image_shift)); 
-				buf[lowerRow][buffer_start_col + i] = (temp_image[i] >> (8 - image_shift)) | image_mask;
+		else if(maskType == IMAGE_SELF_MASK)
+		{		
+			if(rows >= 0){	
+				for(uint8_t i=0; i<visible_width; i++){
+					uint8_t image_mask = (buf[rows][buffer_start_col + i] & (0xFF >> (8 - image_shift))); 
+					buf[rows][buffer_start_col + i] &= (temp_image[i] << image_shift) | image_mask;
+				}
+			}
+			uint8_t lowerRow = rows + 1;
+			if(lowerRow < ROWS && image_shift){	
+				for(uint8_t i=0; i<visible_width; i++){
+					uint8_t image_mask = (buf[lowerRow][buffer_start_col + i] & (0xFF << image_shift)); 
+					buf[lowerRow][buffer_start_col + i] &= (temp_image[i] >> (8 - image_shift)) | image_mask;
+				}
+			}
+		}
+		else{//IMAGE_AUTO_MASK
+			if(rows >= 0){	
+				for(uint8_t i=0; i<visible_width; i++){
+					uint8_t image_mask = (buf[rows][buffer_start_col + i] & (0xFF >> (8 - image_shift))); 
+					buf[rows][buffer_start_col + i] = (temp_image[i] << image_shift) | image_mask;
+				}
+			}
+			uint8_t lowerRow = rows + 1;
+			if(lowerRow < ROWS && image_shift){	
+				for(uint8_t i=0; i<visible_width; i++){
+					uint8_t image_mask = (buf[lowerRow][buffer_start_col + i] & (0xFF << image_shift)); 
+					buf[lowerRow][buffer_start_col + i] = (temp_image[i] >> (8 - image_shift)) | image_mask;
+				}
 			}
 		}
 		image_start_row++;
+	}
+	
+	if(maskType == IMAGE_SELF_MASK){
+		maskType = IMAGE_NO_MASK;
+		goto OVERDRAW;
 	}
 }
 

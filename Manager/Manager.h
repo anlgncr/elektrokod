@@ -14,6 +14,9 @@
 #include <Tween.h>
 #include <EventNames.h>
 
+#define CS_BUTTON 0
+#define PARALEL_BUTTON_MASK 0x03
+
 #define CHARGE_STATUS_PIN 2
 #define SWITCH_PIN 8
 #define SMD_BUTTON_PIN 9
@@ -32,6 +35,7 @@ class Manager{
 		uint8_t update();
 	
 	private:
+		SPISettings mSPISet;
 		Button button_A;
 		Button button_B;
 		Button button_C;
@@ -44,6 +48,7 @@ class Manager{
 		Button button_Y;
 		
 		void updateDisplayObjects(DisplayObject*);
+		void updateButtons();
 };
 
 #endif

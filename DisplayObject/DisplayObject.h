@@ -10,7 +10,11 @@
 #define COLLIDER_RECTANGLE 0
 #define COLLIDER_CIRCLE 1
 
-class DisplayObject : public Updatable{
+#define IMAGE_NO_MASK 0
+#define IMAGE_AUTO_MASK 1
+#define IMAGE_SELF_MASK 2
+
+class DisplayObject{
 	public:
 		DisplayObject(uint8_t);
 		typedef void(*eventFunction)(DisplayObject*);
@@ -22,6 +26,7 @@ class DisplayObject : public Updatable{
 		void removeEventListener(uint8_t);
 		
 		virtual void onDelay(){};
+		virtual void onUpdate(){};
 		virtual void onAdded(){};
 		virtual void onRemoved(){};
 		virtual void onButtonDown(uint8_t){};
@@ -56,6 +61,7 @@ class DisplayObject : public Updatable{
 		void setDelayStartTime(uint32_t);
 		void setDelaying(uint8_t);
 		void setChildIndex(DisplayObject*, uint8_t);
+		void setMaskType(uint8_t);
 		
 		uint16_t getId();
 		void getName(char*, uint8_t);
@@ -84,6 +90,7 @@ class DisplayObject : public Updatable{
 		uint32_t getDelayStartTime();
 		uint8_t isDelaying();
 		uint8_t getIndex();
+		uint8_t getMaskType();
 		void writeInfo();
 		
 		void applyChildChanges();
@@ -100,12 +107,13 @@ class DisplayObject : public Updatable{
 			DisplayObject *parent;
 			DisplayObject **children;
 			uint8_t *image;
+			uint8_t maskType;
 			int16_t x;
 			int16_t y;
-			uint16_t height;
-			uint16_t width;
 			int16_t globalX;
 			int16_t globalY;
+			uint16_t height;
+			uint16_t width;
 			int8_t flipped;
 			uint8_t index;
 			uint8_t childSize;

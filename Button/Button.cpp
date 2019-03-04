@@ -45,25 +45,9 @@ void Button::statusChanged(){
 		onChanged(this);
 }
 
-uint8_t Button::update()
-{
-	uint8_t data;
-	uint8_t inputType = getInputType();
-	
-	if(inputType == SPI_INPUT){
-		SPI.beginTransaction(SPISettings(16000000, MSBFIRST, SPI_MODE0));
-		PORTC &= DECODER_MASK;
-		PORTC |= CS_BUTTON;
-		data = SPI.transfer(0);
-		SPI.endTransaction();
-	}
-	else if(inputType == PARALEL_INPUT){
-		data = PINB & PARALEL_MASK;
-	}
-	
-	uint8_t pin = getPin();
-	
-	if(data & pin)
+void Button::update(uint8_t data)
+{	
+	if(data & getPin())
 	{
 		RAM::write32(&my_object->down_lastTime, millis());
 		if(RAM::read(&my_object->up) && (millis() - RAM::read32(&my_object->up_lastTime)) > DEBOUNCE_TIME){
@@ -90,8 +74,6 @@ uint8_t Button::update()
 		RAM::write(&my_object->longPressed, true);
 		statusChanged();
 	}
-	
-	return true;
 }
 
 uint8_t Button::isDown(){

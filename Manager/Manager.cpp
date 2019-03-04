@@ -36,25 +36,18 @@ Manager::Manager():
 	button_Y.setInputType(PARALEL_INPUT);
 	button_X.setInputType(PARALEL_INPUT);
 	
-	updater.add(&button_A);
-	updater.add(&button_B);
-	updater.add(&button_C);
-	updater.add(&button_D);
-	updater.add(&button_E);
-	updater.add(&button_F);
-	updater.add(&button_G);
-	updater.add(&button_H);
-	updater.add(&button_X);
-	updater.add(&button_Y);
-	updater.add(&scene);
+	mSPISet = SPISettings(16000000, MSBFIRST, SPI_MODE0);
 }
 
 void Manager::run(){
+	
+	updateButtons();
 	
 	for(uint8_t i=0; i<scene.getChildCount(); i++){
 		updateDisplayObjects(scene.getChildAt(i));
 	}
 	scene.applyChildChanges();
+	scene.onUpdate();
 	
 	updater.update();
 }
@@ -65,7 +58,7 @@ void Manager::updateDisplayObjects(DisplayObject* child){
 
 	child->setGlobalX(child->getParent()->getGlobalX() + child->getX());
 	child->setGlobalY(child->getParent()->getGlobalY() + child->getY());
-	child->update();
+	child->onUpdate();
 				
 	if(child->isDelaying()){
 		if(millis() > (child->getDelayStartTime() + child->getDelayTime())){
@@ -80,6 +73,29 @@ void Manager::updateDisplayObjects(DisplayObject* child){
 		}
 		child->applyChildChanges();
 	}
+}
+
+void Manager::updateButtons(){	
+	uint8_t data;
+	
+	SPI.beginTransaction(mSPISet);
+	PORTC &= DECODER_MASK;
+	PORTC |= CS_BUTTON;
+	data = SPI.transfer(0);
+	SPI.endTransaction();
+	
+	button_A.update(data);
+	button_B.update(data);
+	button_C.update(data);
+	button_D.update(data);
+	button_E.update(data);
+	button_F.update(data);
+	button_G.update(data);
+	button_H.update(data);
+	
+	data = PINB & PARALEL_BUTTON_MASK;
+	button_X.update(data);
+	button_Y.update(data);
 }
 
 
