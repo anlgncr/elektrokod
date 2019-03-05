@@ -2,7 +2,6 @@
 #define DisplayObject_h
 #include "arduino.h"
 #include "RAM.h"
-#include "Updatable.h"
 #include "Button.h"
 #include "EventNames.h"
 #define NAME_MAX_LENGTH 15
@@ -13,6 +12,7 @@
 #define IMAGE_NO_MASK 0
 #define IMAGE_AUTO_MASK 1
 #define IMAGE_SELF_MASK 2
+#define IMAGE_EXTERNAL_MASK 3
 
 class DisplayObject{
 	public:
@@ -20,8 +20,9 @@ class DisplayObject{
 		typedef void(*eventFunction)(DisplayObject*);
 		
 		void dispatchEvent(uint8_t);
-		void dispatchEvent(uint8_t, uint8_t);
-		void dispatchEventAll(uint8_t, uint8_t);
+		void dispatchEvent(uint8_t, DisplayObject*);
+		void dispatchEventAll(uint8_t);
+		void dispatchEventAll(uint8_t, DisplayObject*);
 		void addEventListener(uint8_t, eventFunction);
 		void removeEventListener(uint8_t);
 		
@@ -62,6 +63,8 @@ class DisplayObject{
 		void setDelaying(uint8_t);
 		void setChildIndex(DisplayObject*, uint8_t);
 		void setMaskType(uint8_t);
+		void setEventInfo(uint8_t);
+		void setExternalMask(uint8_t*);
 		
 		uint16_t getId();
 		void getName(char*, uint8_t);
@@ -91,6 +94,8 @@ class DisplayObject{
 		uint8_t isDelaying();
 		uint8_t getIndex();
 		uint8_t getMaskType();
+		uint8_t getEventInfo();
+		uint8_t* getExternalMask();
 		void writeInfo();
 		
 		void applyChildChanges();
@@ -107,6 +112,7 @@ class DisplayObject{
 			DisplayObject *parent;
 			DisplayObject **children;
 			uint8_t *image;
+			uint8_t *externalMask;
 			uint8_t maskType;
 			int16_t x;
 			int16_t y;
@@ -114,13 +120,14 @@ class DisplayObject{
 			int16_t globalY;
 			uint16_t height;
 			uint16_t width;
-			int8_t flipped;
+			uint8_t flipped;
 			uint8_t index;
 			uint8_t childSize;
 			uint8_t childCount;
 			uint8_t visibility;
 			uint8_t memory;
 			uint8_t drawing;
+			uint8_t eventInfo;
 			eventObject **events;
 			uint8_t eventSize;
 			uint8_t eventCount;
@@ -128,8 +135,8 @@ class DisplayObject{
 			uint32_t delayStartTime;
 			uint32_t delayTime;
 			uint8_t isDelaying;
-			uint8_t childIndexChanged;
-			uint8_t childRemoved;
+			uint8_t childIndexChanged; // Eğer sahip olduğu child nesnelerinin sırası değişirse true olur
+			uint8_t childRemoved;	//Eğer sahip olduğu child nesnelerinden biri silinirse true olur
 		};
 		object *my_object;
 		
@@ -138,7 +145,7 @@ class DisplayObject{
 		void disposeChild();
 		uint16_t getRadius();
 		
-		void updateEvent(uint8_t, uint8_t);
+		void updateEvent(uint8_t, DisplayObject*);
 		
 		void setChildIndexChanged(uint8_t);
 		uint8_t getChildIndexChanged();

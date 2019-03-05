@@ -12,6 +12,8 @@ TextBox::TextBox(uint8_t childSize, uint8_t width, uint8_t rowCount, uint8_t typ
 	
 	setMemory(SPIMEM);
 	setImage(image);
+	setMaskType(IMAGE_AUTO_MASK);
+	
 	my_object = (object*)RAM::malloc(sizeof(object));
 	if(my_object){
 		setTextSource(SMEM);

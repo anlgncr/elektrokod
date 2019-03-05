@@ -20,10 +20,9 @@
 #define CHARGE_STATUS_PIN 2
 #define SWITCH_PIN 8
 #define SMD_BUTTON_PIN 9
-#define BUZZER 3
+#define BUZZER_PIN 3
 
 class Manager{
-
 	public:
 		static Updater updater;
 		static Scene scene;
@@ -32,10 +31,10 @@ class Manager{
 		
 		Manager();
 		void run();
-		uint8_t update();
+		uint8_t isButtonDown(uint8_t);
 	
 	private:
-		SPISettings mSPISet;
+		SPISettings spiSetting;
 		Button button_A;
 		Button button_B;
 		Button button_C;

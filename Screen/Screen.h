@@ -12,6 +12,7 @@
 #define DISP_ON 0xAF
 #define DISP_NOOP 0xE3 
 #define MEM_ADD_MODE 0x20
+#define HOR_ADD_MODE 0x00
 #define PAGE_ADD_MODE 0x02
 #define PAGE_START_ADD 0xB0
 #define LCOL_START_ADD 0x00
@@ -34,8 +35,8 @@ class Screen{
 	public:
 		Screen();
 		void init();
-		uint8_t testDraw(uint8_t*, int16_t, int16_t, uint8_t);
-		void draw(uint8_t, uint8_t);
+		uint8_t testDraw(DisplayObject*);
+		void draw();
 		void writeBuffer();
 		void clearBuffer();
 		void setInverse(uint8_t);
@@ -57,6 +58,7 @@ class Screen{
 		void readArrayPgmReverse(uint8_t*, uint8_t*, uint16_t);
 		
 		struct object{
+			DisplayObject *dispObj;
 			uint8_t *image;
 			uint8_t width;
 			uint16_t height;

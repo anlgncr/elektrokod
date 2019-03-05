@@ -16,8 +16,7 @@ void Screen::reset(){
 	sendCommand2Byte(CMD_LOCK, 0x10);
 	//sendCommand(ENTIRE_DISP_ON);
 	sendCommand(RAM_CONTENT);
-	sendCommand(MEM_ADD_MODE);
-	sendCommand(PAGE_ADD_MODE);
+	sendCommand2Byte(MEM_ADD_MODE, PAGE_ADD_MODE);
 	sendCommand(DISP_START_LINE | 0x00);
 	sendCommand2Byte(DISP_CLOCK, 0xF0);
 	sendCommand(SCAN_DIR_NORMAL);
@@ -121,38 +120,47 @@ void Screen::send(uint8_t data){
 	SPI.endTransaction();
 }
 
-uint8_t Screen::testDraw(uint8_t* image, int16_t x, int16_t y, uint8_t memory){
-	if(!image)
+uint8_t Screen::testDraw(DisplayObject* dispObj){
+	my_object.image = dispObj->getImage();	
+	if(!my_object.image)
 		return 0;
+	
+	my_object.memory = dispObj->getMemory();
 		
-	if(memory == PGMEM){
-		my_object.width = pgm_read_byte(image);
-		my_object.height = pgm_read_byte(image + 1);
+	if(my_object.memory == PGMEM){
+		my_object.width = pgm_read_byte(my_object.image);
+		my_object.height = pgm_read_byte(my_object.image + 1);
 	}
-	else if(memory == SPIMEM){
-		my_object.width = RAM::read(image);
-		my_object.height = RAM::read(image + 1);
+	else if(my_object.memory == SPIMEM){
+		my_object.width = RAM::read(my_object.image);
+		my_object.height = RAM::read(my_object.image + 1);
+	}
+	else{
+		return 0;
 	}
 	
-	if((x + my_object.width) <= 0){ return 0; }
-	if(x >= COLS){ return 0; }
+	my_object.x = dispObj->getGlobalX();
+	my_object.y = dispObj->getGlobalY();
+	
+	if((my_object.x + my_object.width) <= 0){ return 0; }
+	if(my_object.x >= COLS){ return 0; }
 	
 	if(my_object.height == 0){ return 0; }
 	my_object.height *= 8;
 
-	if((int)(y + my_object.height) <= 0){ return 0; }
-	if(y >= ROWS*8){ return 0; }	
+	if((int)(my_object.y + my_object.height) <= 0){ return 0; }
+	if(my_object.y >= ROWS*8){ return 0; }	
 	
-	my_object.image = image;
-	my_object.x = x;
-	my_object.y = y;
-	my_object.memory = memory;
+	my_object.dispObj = dispObj;
 	
 	return 1;
 }	
 
-
-void Screen::draw(uint8_t flipped, uint8_t maskType){ // draw after testDraw!!
+void Screen::draw(){ // draw after testDraw!!
+	
+	uint8_t flipped = my_object.dispObj->isFlipped();
+	uint8_t maskType = my_object.dispObj->getMaskType();
+	
 	uint8_t image_start_col, image_end_col, buffer_start_col;
 	
 	if(my_object.x < 0){
@@ -232,8 +240,12 @@ void Screen::draw(uint8_t flipped, uint8_t maskType){ // draw after testDraw!!
 	if(maskType == IMAGE_NO_MASK || maskType == IMAGE_AUTO_MASK){
 		image_array = (uint8_t(*)[my_object.width])(my_object.image + 2);
 	}
-	else{
+	else if(maskType == IMAGE_SELF_MASK){
 		image_array = (uint8_t(*)[my_object.width])(my_object.image + 2 + my_object.width * (my_object.height / 8));
+	}
+	else{ //IMAGE_EXTERNAL_MASK
+		image_array = (uint8_t(*)[my_object.width])my_object.dispObj->getExternalMask();
+		maskType = IMAGE_SELF_MASK;
 	}
 
 	for(int16_t rows = buffer_start_row; rows < buffer_end_row; rows++)

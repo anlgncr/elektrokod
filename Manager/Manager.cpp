@@ -15,41 +15,36 @@ void Manager::buttonListener(Button* my_button){
 	else
 		return;
 	
-	Manager::button_code = my_button->getCode();
-	Manager::scene.dispatchEventAll(button_event, Manager::button_code);
+	button_code = my_button->getCode();
+	scene.setEventInfo(button_code);
+	scene.dispatchEventAll(button_event);
 }
 
 Manager::Manager():
-	button_A(BUTTON_A,buttonListener),
-	button_B(BUTTON_B,buttonListener),
-	button_C(BUTTON_C,buttonListener),
-	button_D(BUTTON_D,buttonListener),
-	button_E(BUTTON_E,buttonListener),
-	button_F(BUTTON_F,buttonListener),
-	button_G(BUTTON_G,buttonListener),
-	button_H(BUTTON_H,buttonListener),
-	button_X(BUTTON_X,buttonListener),
-	button_Y(BUTTON_Y,buttonListener)
-{		   
+	button_A(BUTTON_A,buttonListener),button_B(BUTTON_B,buttonListener),
+	button_C(BUTTON_C,buttonListener),button_D(BUTTON_D,buttonListener),
+	button_E(BUTTON_E,buttonListener),button_F(BUTTON_F,buttonListener),
+	button_G(BUTTON_G,buttonListener),button_H(BUTTON_H,buttonListener),
+	button_X(BUTTON_X,buttonListener),button_Y(BUTTON_Y,buttonListener)
+{		  
+	SPI.begin();
 	pinMode(CHARGE_STATUS_PIN, INPUT);
-	pinMode(BUZZER, OUTPUT);
-	button_Y.setInputType(PARALEL_INPUT);
-	button_X.setInputType(PARALEL_INPUT);
+	pinMode(BUZZER_PIN, OUTPUT);
+	spiSetting = SPISettings(16000000, MSBFIRST, SPI_MODE0);
 	
-	mSPISet = SPISettings(16000000, MSBFIRST, SPI_MODE0);
+	button_X.setInputType(PARALEL_INPUT);
+	button_Y.setInputType(PARALEL_INPUT);
 }
 
 void Manager::run(){
-	
 	updateButtons();
+	updater.update();
 	
 	for(uint8_t i=0; i<scene.getChildCount(); i++){
 		updateDisplayObjects(scene.getChildAt(i));
 	}
 	scene.applyChildChanges();
 	scene.onUpdate();
-	
-	updater.update();
 }
 
 void Manager::updateDisplayObjects(DisplayObject* child){
@@ -78,7 +73,7 @@ void Manager::updateDisplayObjects(DisplayObject* child){
 void Manager::updateButtons(){	
 	uint8_t data;
 	
-	SPI.beginTransaction(mSPISet);
+	SPI.beginTransaction(spiSetting);
 	PORTC &= DECODER_MASK;
 	PORTC |= CS_BUTTON;
 	data = SPI.transfer(0);
@@ -96,6 +91,21 @@ void Manager::updateButtons(){
 	data = PINB & PARALEL_BUTTON_MASK;
 	button_X.update(data);
 	button_Y.update(data);
+}
+
+uint8_t Manager::isButtonDown(uint8_t code){
+	switch(code){
+		case CODE_A	: return button_A.isDown();
+		case CODE_B : return button_B.isDown();
+		case CODE_C : return button_C.isDown();
+		case CODE_D : return button_D.isDown();
+		case CODE_E : return button_E.isDown();
+		case CODE_F : return button_F.isDown();
+		case CODE_G : return button_G.isDown();
+		case CODE_H : return button_H.isDown();
+		case CODE_X : return button_X.isDown();
+		case CODE_Y : return button_Y.isDown();
+	}
 }
 
 

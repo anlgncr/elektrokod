@@ -10,24 +10,24 @@ class Bullet : public Shape{
 			drawSquare(0,0,2);
 		};
 		
-		uint8_t onUpdate(){
+		void onUpdate(){
 			move();
 		};
 		
 		void onAdded(){
 			setDelaying(true);
-			analogWrite(BUZZER, 10);
+			analogWrite(BUZZER_PIN, 10);
 			setDelayTime(10);
 		}
 		
 		void onDelay(){
-			digitalWrite(BUZZER, LOW);
+			digitalWrite(BUZZER_PIN, LOW);
 			setDelaying(false);
 		}
 		
 		void onRemoved(){
 			setFlipped(false);
-			digitalWrite(BUZZER, LOW);
+			digitalWrite(BUZZER_PIN, LOW);
 			setDelaying(false);
 		}
 		

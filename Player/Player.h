@@ -8,6 +8,7 @@
 #include "Camera.h"
 #include "TextBox.h"
 #include "character_images.h"
+
 uint8_t* movieBmp[14] = {	(uint8_t*)idle1, (uint8_t*)idle2, (uint8_t*)idle1, 
 							(uint8_t*)run1, (uint8_t*)run2, (uint8_t*)run3, (uint8_t*)run2, 
 							(uint8_t*)falling, 
@@ -41,12 +42,14 @@ class Player : public DisplayObject
 		Player(uint8_t childSize): 	DisplayObject(childSize), mega(0, movieBmp, 14, 8), 
 									sensorBottom(0, 17, 3), sensorTop(0, 17, 3),
 									sensorRight(0, 3, 24), sensorLeft(0, 3, 24),
-									score(0, 18, 8, TYPE_8), fpsText(0, 18, 1, TYPE_8)
+									score(0, 18, 3, TYPE_8), fpsText(0, 18, 1, TYPE_8)
 		{
 			setDelayTime(500);
 			setDelaying(true);
+			mega.setMaskType(IMAGE_AUTO_MASK);
 			
 			Manager::scene.addChild(&fpsText);
+			Manager::scene.addChild(&score);
 			processTime = millis();
 	
 			pinMode(3, OUTPUT);
@@ -55,12 +58,11 @@ class Player : public DisplayObject
 			setHeight(24);
 			
 			score.setX(110);
-			score.write("100");
 			
-			addChild(&mega);
+			addChild(&mega);			
 			playAnimation(idle1);
 			
-			Manager::scene.addChild(&score);
+			
 			
 			sensorBottom.drawRectangle(0,0,17,3);
 			sensorTop.drawRectangle(0,0,17,3);
@@ -87,7 +89,8 @@ class Player : public DisplayObject
 		}
 				
 		void onAdded(){
-			Manager::scene.setChildIndex(&fpsText, Manager::scene.getChildCount() - 1);
+			Manager::scene.setChildIndex(&fpsText, Manager::scene.getChildCount()- 1);
+			Manager::scene.setChildIndex(&score, Manager::scene.getChildCount() - 1);
 		}	
 		
 		void onDelay(){

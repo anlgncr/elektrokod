@@ -94,25 +94,33 @@ uint16_t DisplayObject::distanceTo(DisplayObject* target){
 
 void DisplayObject::setChildIndex(DisplayObject* child, uint8_t targetIndex){
 	uint8_t childIndex = child->getIndex();
-	
 	if(!contains(child) || targetIndex >= getChildCount() || targetIndex == childIndex)
 		return;
 	
+	uint8_t childCount = getChildCount();
+	DisplayObject* children[childCount] = {};
+	
+	for(uint8_t i=0; i<childCount; i++){
+		DisplayObject* child = getChildAt(i);
+		if(child)
+			children[child->getIndex()] = child;
+	}
+	
 	if(childIndex > targetIndex){
 		for(uint8_t i=0; i<childIndex - targetIndex; i++){
-			DisplayObject* object =  getChildAt(childIndex - i - 1);
-			uint8_t newIndex = childIndex - i;
-			object->setIndex(newIndex);
+			DisplayObject* object =  children[childIndex - i - 1];
+			object->setIndex(childIndex - i);
 		}
 	}
 	else{
 		for(uint8_t i=childIndex; i<targetIndex; i++){
-			DisplayObject* object =  getChildAt(i + 1);
+			DisplayObject* object = children[i + 1];
 			object->setIndex(i);
 		}	
 	}
 	child->setIndex(targetIndex);
 	setChildIndexChanged(true);
+	
 }
 
 DisplayObject* DisplayObject::contains(DisplayObject* child){
@@ -217,9 +225,12 @@ void DisplayObject::disposeChild(){
 	setChildCount(currentIndex);
 }
 
+void DisplayObject::dispatchEventAll(uint8_t event){
+	dispatchEventAll(event, this);
+}
 
-void DisplayObject::dispatchEventAll(uint8_t event, uint8_t info){
-	updateEvent(event, info);
+void DisplayObject::dispatchEventAll(uint8_t event, DisplayObject* source_object){
+	updateEvent(event, source_object);
 	uint8_t childCount = getChildCount();
 	
 	if(childCount > 0){
@@ -227,7 +238,7 @@ void DisplayObject::dispatchEventAll(uint8_t event, uint8_t info){
 			DisplayObject *object = getChildAt(i);
 			
 			if(object){
-				object->dispatchEventAll(event, info);
+				object->dispatchEventAll(event, source_object);
 			}
 		}
 		applyChildChanges();
@@ -261,29 +272,23 @@ void DisplayObject::applyChildChanges(){
 }
 
 void DisplayObject::dispatchEvent(uint8_t event){
+	dispatchEvent(event, this);
+}
+
+void DisplayObject::dispatchEvent(uint8_t event, DisplayObject* source_object){
 	DisplayObject *parent = getParent();
 	if(parent != NULL){
-		parent->dispatchEvent(event); //Bubbling ..oooOOO
+		parent->dispatchEvent(event, source_object); //Bubbling ..oooOOO
 	}
 	
 	if(parent){
-		updateEvent(event, 0); //Catching \☻/
+		updateEvent(event, source_object); //Catching \☻/
 	}
 }
 
-void DisplayObject::dispatchEvent(uint8_t event, uint8_t info){
-	DisplayObject *parent = getParent();
-	if(parent != NULL){
-		parent->dispatchEvent(event); //Bubbling ..oooOOO
-	}
-	
-	if(parent){
-		updateEvent(event, info); //Catching \☻/
-	}
-}
-
-void DisplayObject::updateEvent(uint8_t event, uint8_t info){
+void DisplayObject::updateEvent(uint8_t event, DisplayObject* source_object){
 	uint8_t eventCount = getEventCount();
+	uint8_t info = source_object->getEventInfo();
 	
 	switch(event){
 		case BUTTON_DOWN: onButtonDown(info); break;
@@ -297,7 +302,7 @@ void DisplayObject::updateEvent(uint8_t event, uint8_t info){
 		if(my_event == event){
 			eventFunction function = getEventFunction(event_object);
 			if(function){
-				function(this);
+				function(source_object);
 			}
 		}
 	}
@@ -427,9 +432,24 @@ uint8_t DisplayObject::getMaskType(){
 	return RAM::read(&my_object->maskType);
 }
 
+uint8_t DisplayObject::getEventInfo(){
+	return RAM::read(&my_object->eventInfo);
+}
+
+uint8_t* DisplayObject::getExternalMask(){
+	return RAM::readPtr(&my_object->externalMask);
+}
 
 //------------------------------------------ SETTER -------|
 //------------------------------------------ ////// -------|
+
+void DisplayObject::setExternalMask(uint8_t* mask){
+	RAM::writePtr(&my_object->externalMask, mask);
+}
+
+void DisplayObject::setEventInfo(uint8_t value){
+	RAM::write(&my_object->eventInfo, value);
+}
 
 void DisplayObject::setMaskType(uint8_t value){
 	RAM::write(&my_object->maskType, value);
@@ -565,6 +585,7 @@ void DisplayObject::setChildAt(uint8_t index, DisplayObject* child){
 void DisplayObject::setDrawing(uint8_t value){
 	RAM::write(&my_object->drawing, value);
 }
+
 
 //------------------------------------------ GETTER -------|
 //------------------------------------------ ////// -------|

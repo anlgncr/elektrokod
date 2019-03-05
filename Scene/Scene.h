@@ -29,8 +29,8 @@ class Scene : public DisplayObject{
 				return;
 	
 			if(child->isVisible()){
-				if(myScreen.testDraw(child->getImage(), child->getGlobalX(), child->getGlobalY(), child->getMemory())){
-					myScreen.draw(child->isFlipped(), child->getMaskType());
+				if(myScreen.testDraw(child)){
+					myScreen.draw();
 				}
 				
 				if(child->getChildCount() > 0){

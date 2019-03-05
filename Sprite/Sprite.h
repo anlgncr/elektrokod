@@ -10,6 +10,10 @@ class Sprite : public DisplayObject{
 			
 		};
 		
+		Sprite() : DisplayObject(0){
+			
+		};
+		
 		uint8_t update(){
 			
 		};
