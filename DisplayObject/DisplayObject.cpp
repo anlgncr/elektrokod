@@ -98,7 +98,7 @@ void DisplayObject::setChildIndex(DisplayObject* child, uint8_t targetIndex){
 		return;
 	
 	uint8_t childCount = getChildCount();
-	DisplayObject* children[childCount] = {};
+	DisplayObject* children[childCount];
 	
 	for(uint8_t i=0; i<childCount; i++){
 		DisplayObject* child = getChildAt(i);
@@ -109,13 +109,15 @@ void DisplayObject::setChildIndex(DisplayObject* child, uint8_t targetIndex){
 	if(childIndex > targetIndex){
 		for(uint8_t i=0; i<childIndex - targetIndex; i++){
 			DisplayObject* object =  children[childIndex - i - 1];
-			object->setIndex(childIndex - i);
+			if(object)
+				object->setIndex(childIndex - i);
 		}
 	}
 	else{
 		for(uint8_t i=childIndex; i<targetIndex; i++){
 			DisplayObject* object = children[i + 1];
-			object->setIndex(i);
+			if(object)
+				object->setIndex(i);
 		}	
 	}
 	child->setIndex(targetIndex);
@@ -252,10 +254,8 @@ void DisplayObject::applyChildChanges(){
 		
 		for(uint8_t i=0; i<childCount; i++){
 			DisplayObject* child = getChildAt(i);
-			if(child){
-				uint8_t index = child->getIndex();
-				children[index] = child;
-			}
+			if(child)
+				children[child->getIndex()] = child;
 		}
 		
 		for(uint8_t i=0; i<childCount; i++){
