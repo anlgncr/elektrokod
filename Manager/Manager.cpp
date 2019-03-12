@@ -3,6 +3,11 @@
 Updater Manager::updater(100);
 Scene Manager::scene(100);
 uint8_t Manager::button_code = 0;
+uint32_t Manager::processTime = 0;
+
+uint32_t Manager::getProcessTime(){
+	return processTime;
+}
 
 void Manager::buttonListener(Button* my_button){ 
 	uint8_t button_event;
@@ -37,14 +42,19 @@ Manager::Manager():
 }
 
 void Manager::run(){
+	static uint32_t lastMillis = 0;
+	
 	updateButtons();
 	updater.update();
 	
+	scene.onUpdate();
+	scene.applyChildChanges();
 	for(uint8_t i=0; i<scene.getChildCount(); i++){
 		updateDisplayObjects(scene.getChildAt(i));
 	}
-	scene.applyChildChanges();
-	scene.onUpdate();
+	
+	processTime = millis() - lastMillis;
+	lastMillis = millis();
 }
 
 void Manager::updateDisplayObjects(DisplayObject* child){
@@ -63,10 +73,10 @@ void Manager::updateDisplayObjects(DisplayObject* child){
 	}
 	
 	if(child->getChildCount() > 0){
+		child->applyChildChanges();
 		for(uint8_t i=0; i<child->getChildCount(); i++){					
 			updateDisplayObjects(child->getChildAt(i));
 		}
-		child->applyChildChanges();
 	}
 }
 

@@ -82,10 +82,10 @@ class oyun : public DisplayObject
 			
 			
 			if(right){
-				karakter.setX(karakter.getX()+1);
+				moveX(120);
 			}
 			else if(left){
-				karakter.setX(karakter.getX()-1);
+				moveX(-120);
 			}
 			
 			if(up){

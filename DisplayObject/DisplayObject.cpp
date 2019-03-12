@@ -1,4 +1,6 @@
 #include "DisplayObject.h"
+#include "Manager.h"
+
 
 DisplayObject::DisplayObject(uint8_t childSize){
 	my_object = (object*)RAM::malloc(sizeof(object));
@@ -28,6 +30,16 @@ void DisplayObject::copyObject(object* obj1, object* obj2){ //obj1 is to be copi
 
 void DisplayObject::loadObject(object* obj1, object* obj2){
 	RAM::readArray(obj2, obj1, sizeof(object));
+}
+
+void DisplayObject::moveX(int16_t pixel){
+	float ratio = (float)Manager::getProcessTime() / 1000;
+	setX(getX() + round(ratio * pixel));
+}
+
+void DisplayObject::moveY(int16_t pixel){
+	float ratio = (float)Manager::getProcessTime() / 1000;
+	setX(getY() + round(ratio * pixel));
 }
 
 uint8_t DisplayObject::hitTest(DisplayObject* target){
@@ -98,7 +110,7 @@ void DisplayObject::setChildIndex(DisplayObject* child, uint8_t targetIndex){
 		return;
 	
 	uint8_t childCount = getChildCount();
-	DisplayObject* children[childCount];
+	DisplayObject* children[childCount] = {};
 	
 	for(uint8_t i=0; i<childCount; i++){
 		DisplayObject* child = getChildAt(i);
@@ -122,7 +134,6 @@ void DisplayObject::setChildIndex(DisplayObject* child, uint8_t targetIndex){
 	}
 	child->setIndex(targetIndex);
 	setChildIndexChanged(true);
-	
 }
 
 DisplayObject* DisplayObject::contains(DisplayObject* child){
@@ -236,6 +247,7 @@ void DisplayObject::dispatchEventAll(uint8_t event, DisplayObject* source_object
 	uint8_t childCount = getChildCount();
 	
 	if(childCount > 0){
+		applyChildChanges();
 		for(uint8_t i=0; i<childCount; i++){
 			DisplayObject *object = getChildAt(i);
 			
@@ -243,7 +255,7 @@ void DisplayObject::dispatchEventAll(uint8_t event, DisplayObject* source_object
 				object->dispatchEventAll(event, source_object);
 			}
 		}
-		applyChildChanges();
+		
 	}
 }
 
@@ -294,6 +306,7 @@ void DisplayObject::updateEvent(uint8_t event, DisplayObject* source_object){
 		case BUTTON_DOWN: onButtonDown(info); break;
 		case BUTTON_UP: onButtonUp(info); break;
 		case BUTTON_LONG_DOWN: onButtonLongDown(info); break;
+		default : onSpecificEvent(event);
 	}
 	
 	for(uint8_t i=0; i<eventCount; i++){
@@ -327,7 +340,7 @@ void DisplayObject::addEventListener(uint8_t event, eventFunction function){
 		setEventFunction(new_event, function);
 		setEvent(new_event, event);
 		setEventAt(eventCount, new_event);
-		setEventCount(++eventCount);
+		setEventCount(eventCount + 1);
 	}
 }
 

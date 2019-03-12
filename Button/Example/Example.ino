@@ -1,5 +1,5 @@
-#include <Setup.h>
-
+#include <Manager.h>
+Manager manager;
 const uint8_t button_down[] PROGMEM = { 10, 2,
 	0x78, 0xFE, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFE, 0x78, 
 	0x00, 0x01, 0x01, 0x03, 0x03, 0x03, 0x03, 0x01, 0x01, 0x00
@@ -32,14 +32,14 @@ MovieClip movieX(0, movie_button, 3, 1);
 MovieClip movieY(0, movie_button, 3, 1);
 
 void setup() {
-  Setup();
+ 
   myText.setTextSource(PGMEM);
   myText.write((char*)header);
   
   pinMode(7, OUTPUT);
   
-  scene.addChild(&container);
-  scene.addChild(&myText);
+  Manager::scene.addChild(&container);
+  Manager::scene.addChild(&myText);
   
   container.addEventListener(BUTTON_DOWN, buttonDownListener);
   container.addEventListener(BUTTON_UP, buttonUpListener);
@@ -71,7 +71,7 @@ void setup() {
 }
 
 void buttonDownListener(DisplayObject *e){
-	switch(button_code){
+	switch(e->getEventInfo()){
 		case CODE_A: movieA.gotoAndStop(1); break;
 		case CODE_B: movieB.gotoAndStop(1); break;
 		case CODE_C: movieC.gotoAndStop(1); break;
@@ -86,7 +86,7 @@ void buttonDownListener(DisplayObject *e){
 }
 
 void buttonLongDownListener(DisplayObject *e){
-	switch(button_code){
+	switch(e->getEventInfo()){
 		case CODE_A: movieA.gotoAndStop(2); break;
 		case CODE_B: movieB.gotoAndStop(2); break;
 		case CODE_C: movieC.gotoAndStop(2); break;
@@ -102,7 +102,7 @@ void buttonLongDownListener(DisplayObject *e){
 }
 
 void buttonUpListener(DisplayObject *e){
-	switch(button_code){
+	switch(e->getEventInfo()){
 		case CODE_A: movieA.gotoAndStop(0); break;
 		case CODE_B: movieB.gotoAndStop(0); break;
 		case CODE_C: movieC.gotoAndStop(0); break;
@@ -118,5 +118,5 @@ void buttonUpListener(DisplayObject *e){
 }
 
 void loop() {
-  updater.update();
+  manager.run();
 }

@@ -1,13 +1,13 @@
-#include "Setup.h"
+#include "Manager.h"
 #include "Watch.h"
 
 Watch newWatch;
+Manager manager;
 
 void setup(){
-	Setup();
-	scene.addChild(&newWatch);	
+	Manager::scene.addChild(&newWatch);	
 }
 
 void loop(){
-	updater.update();
+	manager.run();
 }

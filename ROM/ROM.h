@@ -20,6 +20,15 @@ class ROM{
 		static void writeArray(void*, void*, uint16_t);
 		static void writeLoop(void*, uint8_t, uint16_t);
 		
+		static uint16_t read16(void*);
+		static uint32_t read32(void*);
+		
+		static void* readPtr(void*);
+		static void writePtr(void*, void*);
+		
+		static void write16(void*, uint16_t);
+		static void write32(void*, uint32_t);
+		
 	private:
 		static void writePage(uint16_t, uint8_t*, uint16_t);
 		static void writeBuffer(uint16_t, uint8_t*, uint16_t);

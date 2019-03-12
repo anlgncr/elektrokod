@@ -143,7 +143,7 @@ class Watch : public DisplayObject{
 			indicator.setX(128);
 		}
 		
-		uint8_t update()
+		void onUpdate()
 		{
 			if(set){
 				newTween.update();

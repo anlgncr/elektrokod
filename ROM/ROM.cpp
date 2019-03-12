@@ -34,6 +34,37 @@ uint8_t ROM::read(void* address){
 	return data;
 }
 
+uint16_t ROM::read16(void* address){
+	uint16_t var;
+	readArray(address, &var, 2);
+	return var;
+}
+
+void ROM::write16(void* address, uint16_t data){
+	writeArray(address, &data, 2);
+}
+
+void* ROM::readPtr(void* address){
+	uint16_t var;
+	readArray(address, &var, sizeof(void*));
+	return (void*)var;
+}
+
+void ROM::writePtr(void* address, void* data){
+	uint16_t ptr = (word)data;
+	writeArray(address, &ptr, sizeof(void*));
+}
+
+uint32_t ROM::read32(void* address){
+	uint32_t var;
+	readArray(address, &var, 4);
+	return var;
+}
+
+void ROM::write32(void* address, uint32_t data){
+	writeArray(address, &data, 4);
+}
+
 // length = 130 olsun
 void ROM::writeArray(void* address, void* data, uint16_t length){
 	

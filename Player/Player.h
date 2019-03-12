@@ -37,7 +37,6 @@ class Player : public DisplayObject
 		float gravity = 0.1;
 		//float friction = 0.08;
 		uint8_t grounded = false;
-		uint32_t processTime;
 		
 		Player(uint8_t childSize): 	DisplayObject(childSize), mega(0, movieBmp, 14, 8), 
 									sensorBottom(0, 17, 3), sensorTop(0, 17, 3),
@@ -49,8 +48,8 @@ class Player : public DisplayObject
 			mega.setMaskType(IMAGE_AUTO_MASK);
 			
 			Manager::scene.addChild(&fpsText);
-			Manager::scene.addChild(&score);
-			processTime = millis();
+			//Manager::scene.addChild(&score);
+		
 	
 			pinMode(3, OUTPUT);
 			//setName("player");
@@ -61,8 +60,6 @@ class Player : public DisplayObject
 			
 			addChild(&mega);			
 			playAnimation(idle1);
-			
-			
 			
 			sensorBottom.drawRectangle(0,0,17,3);
 			sensorTop.drawRectangle(0,0,17,3);
@@ -90,12 +87,11 @@ class Player : public DisplayObject
 				
 		void onAdded(){
 			Manager::scene.setChildIndex(&fpsText, Manager::scene.getChildCount()- 1);
-			Manager::scene.setChildIndex(&score, Manager::scene.getChildCount() - 1);
 		}	
 		
 		void onDelay(){
 			char text_buffer[4];
-			sprintf(text_buffer, "%03d", fps);
+			sprintf(text_buffer, "%03d", 1000 / Manager::getProcessTime());
 			//fpsText.clear();
 			fpsText.write(text_buffer);
 			
@@ -106,11 +102,7 @@ class Player : public DisplayObject
 			}
 		}
 		
-		uint8_t fps;
 		void onUpdate(){
-			processTime = millis() - processTime;
-			fps = 1000 / processTime;
-			processTime = millis();
 			move();
 				
 			if(grounded){

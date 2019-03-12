@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <RAM.h>
 #include <ROM.h>
+#include <DisplayObject.h>
 #include <Updater.h>
 #include <Scene.h>
 #include <Sprite.h>
@@ -28,6 +29,8 @@ class Manager{
 		static Scene scene;
 		static uint8_t button_code;
 		static void buttonListener(Button*);
+		static uint32_t processTime;
+		static uint32_t getProcessTime();
 		
 		Manager();
 		void run();

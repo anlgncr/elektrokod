@@ -4,8 +4,8 @@
 #include "RAM.h"
 #include "Button.h"
 #include "EventNames.h"
-#define NAME_MAX_LENGTH 15
 
+#define NAME_MAX_LENGTH 15
 #define COLLIDER_RECTANGLE 0
 #define COLLIDER_CIRCLE 1
 
@@ -14,10 +14,15 @@
 #define IMAGE_SELF_MASK 2
 #define IMAGE_EXTERNAL_MASK 3
 
+class Manager;
 class DisplayObject{
-	public:
+	public:		
 		DisplayObject(uint8_t);
 		typedef void(*eventFunction)(DisplayObject*);
+		
+		
+		void moveX(int16_t);
+		void moveY(int16_t);
 		
 		void dispatchEvent(uint8_t);
 		void dispatchEvent(uint8_t, DisplayObject*);
@@ -26,6 +31,7 @@ class DisplayObject{
 		void addEventListener(uint8_t, eventFunction);
 		void removeEventListener(uint8_t);
 		
+		virtual void onSpecificEvent(uint8_t){};
 		virtual void onDelay(){};
 		virtual void onUpdate(){};
 		virtual void onAdded(){};
@@ -33,7 +39,6 @@ class DisplayObject{
 		virtual void onButtonDown(uint8_t){};
 		virtual void onButtonUp(uint8_t){};
 		virtual void onButtonLongDown(uint8_t){};
-		//virtual void lateUpdate(){};
 		
 		uint8_t hitTest(DisplayObject*);
 		uint16_t distanceTo(DisplayObject*);
@@ -101,10 +106,48 @@ class DisplayObject{
 		void applyChildChanges();
 		
 	private:
+	
+		/*
+			eventFunction function -> Nesnenin çağıracağı fonksiyon (Fonksiyon static olmalı)
+			uint8_t event -> Nesnenin dinlediği olayın adı
+		*/
 		struct eventObject{
 			eventFunction function;
 			uint8_t event;
 		};
+		
+		/*
+			uint16_t id -> Kullanıcı tarafından atanan isteğe bağlı kimlik
+			char* name -> Nesnenin ismi. Eğer isim atanmamışsa varsayılan isim "noname"
+			DisplayObject *parent -> Bu nesnenin bağlı olduğu bir üst nesne
+			DisplayObject **children -> Bu nesnenin sahip olduğu alt nesneler
+			uint8_t *image -> Nesnenin bitmap görüntüsü
+			uint8_t *externalMask -> Nesnenin görüntüsünün isteğe bağlı maskesi
+			uint8_t maskType -> Nesneye bağlı görüntünün maske türü
+			int16_t x -> Nesnenin bağlı olduğu nesneye göre x konumu
+			int16_t y -> Nesnenin bağlı olduğu nesneye göre y konumu
+			int16_t globalX -> Nesnenin ekranda çizildiği x konumu
+			int16_t globalY -> Nesnenin ekranda çizildiği y konumu
+			uint16_t height -> Bitmap görüntüsünün yüksekliği
+			uint16_t width -> Bitmap görüntüsünün yüksekliği
+			uint8_t flipped -> Bitmap'i yatay çevirir
+			uint8_t index -> Nesnenin bağlı bulunduğu nesnedeki dizin numarası
+			uint8_t childSize -> Bu nesnenin sahip olabileceği azami nesne sayısı 
+			uint8_t childCount -> Bu nesneye bağlı bulunan nesne sayısı
+			uint8_t visibility -> Nesne sahnede görünür mü?
+			uint8_t memory -> Bu nesnenin bitmap görüntüsünün bulunduğu hafıza
+			uint8_t drawing -> Nesne sahnede çiziliyor mu?
+			uint8_t eventInfo -> DispatchEvent ile veri göndermek için
+			eventObject **events -> Nesnenin dinlediği olaylar 
+			uint8_t eventSize -> En fazla kaç olay dinleyebilir
+			uint8_t eventCount -> Şuanda kaç olay dinliyor
+			uint8_t collider -> Nesnenin çarpışma algılaması için şekli. Dörtgen veya daire
+			uint32_t delayStartTime -> Nesnenin belirlenen araklıklarla çağırdığı fonksiyonun son çağrılma zamanı
+			uint32_t delayTime -> Nesnenin çağırdığı fonksiyonun gecikme zamanı
+			uint8_t isDelaying -> Nesnedeki gecikme fonksiyonu var mı?
+			uint8_t childIndexChanged -> Sahip olduğu nesnelerin sırası değişti mi?
+			uint8_t childRemoved -> Sahip olduğu nesnelerden biri silindi mi?
+		*/
 		
 		struct object{
 			uint16_t id;
@@ -135,8 +178,8 @@ class DisplayObject{
 			uint32_t delayStartTime;
 			uint32_t delayTime;
 			uint8_t isDelaying;
-			uint8_t childIndexChanged; // Eğer sahip olduğu child nesnelerinin sırası değişirse true olur
-			uint8_t childRemoved;	//Eğer sahip olduğu child nesnelerinden biri silinirse true olur
+			uint8_t childIndexChanged;
+			uint8_t childRemoved;
 		};
 		object *my_object;
 		

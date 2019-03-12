@@ -23,7 +23,6 @@
 #define DECODER_MASK 0xFC
 
 class RAM{
-		
 		public:
 		RAM();
 		
