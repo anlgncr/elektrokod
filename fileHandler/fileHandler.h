@@ -10,6 +10,9 @@
 #define MAX_FILE_COUNT 512
 #define MEMORY_SIZE 1024*64
 
+#define LAST_SECTOR 0xFF
+#define FREE_SECTOR 0x00
+
 class fileHandler
 {
 	public:	
@@ -73,13 +76,13 @@ class fileHandler
 					ROM::writeArray(currentSector + 2, data + sectorIndex * SECTOR_SIZE, SECTOR_SIZE);
 				
 					uint16_t nextSector = ROM::read16(currentSector);
-					if(nextSector == 0xFF || nextSector == 0x00){
+					if(nextSector == LAST_SECTOR){
 						nextSector = findFreeSector(currentSector + (SECTOR_SIZE + 2));
 						if(!nextSector)
 							return false;
 						
 						ROM::write16(currentSector, nextSector);
-						ROM::write16(nextSector, 0xFF);
+						ROM::write16(nextSector, LAST_SECTOR);
 					}
 					currentSector = nextSector;
 				}
@@ -89,10 +92,17 @@ class fileHandler
 			ROM::write16(file->size, length);
 			
 			uint16_t nextSector = ROM::read16(currentSector);
-			while(nextSector != 0xFF){
-				ROM::write16(currentSector, 0xFF);
-				currentSector = nextSector;
-				nextSector = ROM::read16(currentSector);
+			if(nextSector != LAST_SECTOR){
+				ROM::write16(currentSector, LAST_SECTOR);
+
+				do{
+					currentSector = nextSector;
+					nextSector = ROM::read16(currentSector);
+					ROM::write16(currentSector, FREE_SECTOR);	
+				}
+				while(nextSector != LAST_SECTOR);
+				
+				ROM::write16(nextSector, FREE_SECTOR);		
 			}
 			
 			
