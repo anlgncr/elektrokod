@@ -8,7 +8,7 @@
 #define SECTOR_SIZE 110
 #define DATA_START_ADD 0x2000
 #define MAX_FILE_COUNT 512
-#define MEMORY_SIZE 1024*64
+#define ROM_MEMORY_SIZE 65535
 
 #define LAST_SECTOR 0xFF
 #define FREE_SECTOR 0x00
@@ -30,7 +30,7 @@ class fileHandler
 		{	
 			for(uint16_t i=0; i<MAX_FILE_COUNT; i++)
 			{
-				FILE* currentFile = i * sizeof(FILE);	
+				FILE* currentFile = (FILE*)(i * sizeof(FILE));	
 				char karakter = ROM::read(currentFile);
 				
 				if(karakter == name){
@@ -41,23 +41,30 @@ class fileHandler
 					return true;
 				}
 			}
-
-			//"name" adında bir dosya yok. Boş bir sektor ara ve dosyayı oluştur
+			return false;
+		}
+		
+		bool createFile(char name, FILE* file)
+		{
 			for(uint16_t i=0; i<MAX_FILE_COUNT; i++){
-				FILE* currentFile = i * sizeof(FILE);
+				uint16_t fileAddress = i * sizeof(FILE);
+				FILE* currentFile = (FILE*)(fileAddress);
 				
 				uint16_t startSector = ROM::read16(&currentFile->startSector);
 				if(startSector == 0){
 					file->name[0] = name;
-					file->fileAddress = i * sizeof(FILE);
+					file->fileAddress = fileAddress;
 					file->startSector = findFreeSector(DATA_START_ADD);
 					file->size = 0;
 					
-					ROM::write(&currentFile->name, name);
-					ROM::write16(&currentFile->startSector, file->startSector);
-					ROM::write16(file->startSector, 0xFF);
-					ROM::write16(file->size, 0x00);
+					FILE tempFile = {};
+					tempFile.name[0] = name;
+					tempFile.fileAddress = fileAddress;
+					tempFile.startSector = file->startSector;
+					tempFile.size = 0;
 					
+					ROM::writeArray((uint8_t*)fileAddress, (uint8_t*)&tempFile, sizeof(FILE));
+					ROM::write16(file->startSector, 0xFF);
 					//Serial.println("New file has been created");
 					return true;
 				}
@@ -80,13 +87,17 @@ class fileHandler
 				for(sectorIndex = 0; sectorIndex < sectorCount; sectorIndex++){
 					ROM::writeArray(currentSector + 2, data + sectorIndex * SECTOR_SIZE, SECTOR_SIZE);//Sektorun ilk 2 byte'ında sıradaki sektorun adresi var
 				
-					if(!(sectorIndex == (sectorCount - 1) && remaningData == 0)){
-						uint16_t nextSector = findFreeSector(currentSector + (SECTOR_SIZE + 2));
-						if(!nextSector)
-							return false;
-							
-						ROM::write16(currentSector, nextSector);//Şimdiki sektorun ilk 2 byte'ı sıradaki sektoru göstersin
-						ROM::write16(nextSector, LAST_SECTOR);//Sıradaki sektoru şimdilik son sektor olarak işaretle
+					if(!(sectorIndex == (sectorCount - 1) && remaningData == 0))
+					{	
+						uint16_t nextSector = ROM::read16(currentSector);
+						if(nextSector == LAST_SECTOR){
+							nextSector = findFreeSector(currentSector + (SECTOR_SIZE + 2));
+							if(!nextSector)
+								return false;
+								
+							ROM::write16(currentSector, nextSector);//Şimdiki sektorun ilk 2 byte'ı sıradaki sektoru göstersin
+							ROM::write16(nextSector, LAST_SECTOR);//Sıradaki sektoru şimdilik son sektor olarak işaretle
+						}
 						currentSector = nextSector;
 					}
 				}
@@ -148,15 +159,24 @@ class fileHandler
 			}
 			while(nextSector != LAST_SECTOR);
 			
-			FILE* currentFile = file->fileAddress;
-			ROM::write(&currentFile->name[0], 0x00);
-			ROM::write16(&currentFile->startSector, 0x00);
-			ROM::write16(&currentFile->size, 0);
+			FILE emptyFile = {};		
+			ROM::writeArray((uint8_t*)file->fileAddress, (uint8_t*)&emptyFile, sizeof(FILE));
 			
-			file->startSector = 0;
-			file->size = 0;
+			*file = {};
 			//Serial.println("File has been deleted");
 			return true;
+		}
+		
+		void formatMemory(){
+			FILE emptyFile = {};	
+			
+			for(uint16_t i=0; i<MAX_FILE_COUNT; i++){
+				ROM::writeArray((uint8_t*)(i * sizeof(FILE)), (uint8_t*)&emptyFile, sizeof(FILE));
+			}
+	
+			for(uint32_t i=DATA_START_ADD; i<ROM_MEMORY_SIZE; i+=(SECTOR_SIZE + 2)){
+				ROM::write16(i, FREE_SECTOR);	
+			}
 		}
 	
 	private:
@@ -168,7 +188,7 @@ class fileHandler
 			if(startAdd < DATA_START_ADD)
 				startAdd = DATA_START_ADD;
 			
-			for(uint16_t address=startAdd; address<=MEMORY_SIZE-1; address+=(SECTOR_SIZE + 2)){
+			for(uint32_t address=startAdd; address<ROM_MEMORY_SIZE; address+=(SECTOR_SIZE + 2)){
 				uint16_t nextAdd = ROM::read16(address);
 				if(nextAdd == 0){
 					return address;
@@ -176,7 +196,7 @@ class fileHandler
 			}
 		
 			uint16_t remainingSectors = startAdd - DATA_START_ADD;
-			for(uint16_t address = DATA_START_ADD; address<=(DATA_START_ADD + remainingSectors - 1); address+=(SECTOR_SIZE + 2)){
+			for(uint32_t address = DATA_START_ADD; address<(DATA_START_ADD + remainingSectors); address+=(SECTOR_SIZE + 2)){
 				uint16_t nextAdd = ROM::read16(address);
 				if(nextAdd == 0){
 					//Serial.println("Rollovered...!");
