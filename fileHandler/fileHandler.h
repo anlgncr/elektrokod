@@ -12,6 +12,7 @@
 
 #define LAST_SECTOR 0xFF
 #define FREE_SECTOR 0x00
+#define NAME_SIZE 10 //Don't change this value
 
 class fileHandler
 {
@@ -19,22 +20,38 @@ class fileHandler
 		fileHandler(){}
 		
 		typedef struct{
-			char name[10];
+			char name[NAME_SIZE];
 			uint16_t fileAddress;
 			uint16_t startSector;
 			uint16_t size;
 		}FILE;
 		
+		bool compareName(char* name1, char* name2){
+			for(uint8_t i=0; i<NAME_SIZE; i++){
+				if(name1[i] == name2[i]){
+					if(name1[i] == '\0'){
+						return true;
+					}
+				}
+				else{
+					return false;
+				}
+			}
+			return true;
+		}
 
-		bool getFile(char name, FILE* file) //isimler şimdilik tek karakterden oluşuyor.!
+		bool getFile(char* fileName, FILE* file)
 		{	
+			if(fileName[0] == '\0')
+				return false;
+			
 			for(uint16_t i=0; i<MAX_FILE_COUNT; i++)
 			{
 				FILE* currentFile = (FILE*)(i * sizeof(FILE));	
-				char karakter = ROM::read(currentFile);
+				char name[NAME_SIZE];
+				ROM::readArray(&currentFile->name, name, NAME_SIZE);
 				
-				if(karakter == name){
-					file->name[0] = name;
+				if(compareName(name, fileName)){
 					file->fileAddress = i * sizeof(FILE);
 					file->startSector = ROM::read16(&currentFile->startSector);
 					file->size = ROM::read16(&currentFile->size);
@@ -44,21 +61,33 @@ class fileHandler
 			return false;
 		}
 		
-		bool createFile(char name, FILE* file)
+		bool createFile(char* fileName, FILE* file)
 		{
+			if(fileName[0] == '\0')
+				return false;
+			
+			if(getFile(fileName, file)){
+				return true;
+			}
+		
 			for(uint16_t i=0; i<MAX_FILE_COUNT; i++){
 				uint16_t fileAddress = i * sizeof(FILE);
 				FILE* currentFile = (FILE*)(fileAddress);
 				
 				uint16_t startSector = ROM::read16(&currentFile->startSector);
 				if(startSector == 0){
-					file->name[0] = name;
 					file->fileAddress = fileAddress;
 					file->startSector = findFreeSector(DATA_START_ADD);
 					file->size = 0;
 					
 					FILE tempFile = {};
-					tempFile.name[0] = name;
+					for(uint8_t i=0; i<NAME_SIZE; i++){
+						tempFile.name[i] = fileName[i];
+						
+						if(fileName[i] == '\0'){
+							break;
+						}
+					}
 					tempFile.fileAddress = fileAddress;
 					tempFile.startSector = file->startSector;
 					tempFile.size = 0;
@@ -71,6 +100,19 @@ class fileHandler
 			}
 			//Serial.println("There is no empty place!");
 			return false;
+		}
+		
+		uint8_t getNameLength(char* fileName){
+			uint8_t length = 0;
+			for(uint8_t i=0; i<NAME_SIZE; i++){
+				if(fileName[i] == '\0'){
+					return length;
+				}
+				else{
+					length++;
+				}
+			}
+			return length;
 		}
 		
 		bool writeFile(FILE* file, uint8_t* data, uint16_t length)
@@ -203,7 +245,6 @@ class fileHandler
 					return address;
 				}
 			}
-			//Serial.println("shit");
 			return 0;
 		}
 };
