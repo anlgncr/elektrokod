@@ -3,12 +3,10 @@
 #include "fileHandler.h"
 
 #define READ_TIMEOUT 1000
-#define READ_DIRECTORY 'D'
-#define READ_FILE 'F'
 
 fileHandler myFileHandler;
 
-typedef enum {NONE, OKAY = 'O', WRITE = 'W', READ = 'R', DELETE = 'D'} commands;
+typedef enum {NONE, OKAY = 'O', WRITE = 'W', READ_FILE = 'F', READ_DIRECTORY = 'D', REMOVE = 'R'} commands;
 commands command = NONE;
 
 typedef enum {COMMAND, TRANSMIT, RECEIVE} serialStat;
@@ -16,7 +14,7 @@ serialStat status = COMMAND;
 
 uint8_t* incomingData;
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   incomingData = (uint8_t*)RAM::malloc(512);
 }
 
@@ -45,23 +43,15 @@ void processByte(const char data)
 				Serial.print("OK");
 				command = NONE;
 			}
-			else if(command == WRITE){
+			else if(command == WRITE || command == REMOVE){
 				status = RECEIVE;
 				readStartTime = millis();
 				dataPtr = 0;
-				//Serial.println("Cihaz yazma modunda...");
 			}
-			else if(command == READ){
+			else if(command == READ_DIRECTORY){
 				readStartTime = millis();
 				status = TRANSMIT;
 				dataPtr = 0;
-				//Serial.println("Cihaz okuma modunda...");
-			}
-			else if(command == DELETE){
-				readStartTime = millis();
-				status = RECEIVE;
-				dataPtr = 0;
-				//Serial.println("Silme işlemi seçildi");
 			}
 			else{
 				command = NONE;
@@ -93,16 +83,14 @@ void processByte(const char data)
 					//Serial.println("Data is being written...");
 				}
 				else{
-					writeToROM();
 					status = COMMAND;
 					dataPtr = 0;
-					Serial.println("Yazma islemi tamam!");
 					dataInfo = 0;
 					//Serial.println("Cihaz komut bekliyor...");
 				}
 			}
 		}
-		else if(command == DELETE){
+		else if(command == REMOVE){
 			if(dataPtr == 0){
 				dataInfo = data;
 				dataInfo <<= 8;
@@ -113,28 +101,26 @@ void processByte(const char data)
 				dataPtr++;
 			}
 			else{
-				if(myFileHandler.removeFileByIndex(dataInfo)){
+				//if(myFileHandler.removeFileByIndex(dataInfo)){
 					Serial.print('O');//OK
-				}
+				/*}
 				else{
 					Serial.print('N');//NO OK
-				}
-				command = NONE;
+				}*/
 				status = COMMAND;
 			}
 		}
 	}
 	else if(status == TRANSMIT)	
 	{
-		if(command == READ){
-			if(data == READ_DIRECTORY){
-				uint16_t count = myFileHandler.getFileCount();
-				char upper = count >> 8;
-				char lower = count;
-				Serial.print(lower);
-				Serial.print(upper);
-				myFileHandler.readDirectoryOut();
-			}
+		if(command == READ_DIRECTORY){
+			uint16_t count = myFileHandler.getFileCount();
+			char upper = count >> 8;
+			char lower = count;
+			Serial.print(lower);
+			Serial.print(upper);
+			myFileHandler.readDirectoryOut();
+			status = COMMAND;
 		}
 	}
 }
