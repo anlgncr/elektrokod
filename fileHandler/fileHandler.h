@@ -39,6 +39,37 @@ class fileHandler
 			}
 			return true;
 		}
+		
+		uint16_t getFileCount(){
+			uint16_t fileCount = 0;
+			for(uint16_t i=0; i<MAX_FILE_COUNT; i++)
+			{
+				FILE* currentFile = (FILE*)(i * sizeof(FILE));	
+				uint16_t startSector = ROM::read16(&currentFile->startSector);
+				
+				if(startSector != 0){
+					fileCount++;
+				}
+			}
+			return fileCount;
+		}
+		
+		void readDirectoryOut(){
+			for(uint16_t i=0; i<MAX_FILE_COUNT; i++)
+			{
+				FILE* currentFile = (FILE*)(i * sizeof(FILE));	
+				uint16_t startSector = ROM::read16(&currentFile->startSector);
+				
+				if(startSector != 0){
+					byte file[sizeof(FILE)];
+					ROM::readArray(currentFile, file, sizeof(FILE));
+					
+					for(uint8_t j=0; j<sizeof(FILE); j++){
+						Serial.print((char)file[j]);
+					}
+				}
+			}
+		}
 
 		bool getFile(char* fileName, FILE* file)
 		{	
@@ -63,13 +94,9 @@ class fileHandler
 		
 		bool createFile(char* fileName, FILE* file)
 		{
-			if(fileName[0] == '\0')
+			if(fileName[0] == '\0' || getFile(fileName, file))
 				return false;
 			
-			if(getFile(fileName, file)){
-				return true;
-			}
-		
 			for(uint16_t i=0; i<MAX_FILE_COUNT; i++){
 				uint16_t fileAddress = i * sizeof(FILE);
 				FILE* currentFile = (FILE*)(fileAddress);
@@ -165,6 +192,10 @@ class fileHandler
 			return true;
 		}
 		
+		bool appendFile(FILE* file){
+			
+		}
+		
 		void readFile(FILE* file, uint8_t* data, uint16_t length)
 		{
 			uint16_t currentSector = file->startSector;
@@ -207,6 +238,18 @@ class fileHandler
 			*file = {};
 			//Serial.println("File has been deleted");
 			return true;
+		}
+		
+		bool removeFileByIndex(uint16_t fileIndex){
+			if(fileIndex >= MAX_FILE_COUNT){
+				return false;
+			}
+			
+			FILE file;
+			FILE* currentFile = (FILE*)(fileIndex * sizeof(FILE));
+			
+			ROM::readArray(currentFile, &file, sizeof(FILE));
+			return removeFile(&file);
 		}
 		
 		void formatMemory(){
