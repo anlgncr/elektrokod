@@ -4,7 +4,7 @@
 #include <Wire.h>
 
 #define ROM_ADDRESS 0x50
-#define EEPROM_MEMORY_SIZE 1024*64
+#define EEPROM_MEMORY_SIZE 0xFFFF
 #define EEPROM_PAGE_SIZE 128
 #define BUFFER_READ_SIZE 32
 #define BUFFER_WRITE_SIZE 30
@@ -29,10 +29,13 @@ class ROM{
 		static void write16(void*, uint16_t);
 		static void write32(void*, uint32_t);
 		
+		static void copyToSpiRam(void*, void*, uint16_t);
+		
 	private:
 		static void writePage(uint16_t, uint8_t*, uint16_t);
 		static void writeBuffer(uint16_t, uint8_t*, uint16_t);
-		static void readBuffer(uint16_t, uint8_t*, uint16_t);
+		static void readBuffer(uint16_t, uint8_t*, uint16_t, uint8_t);
+		static void copy(void*, void*, uint16_t, uint8_t);
 		
 };
 #endif

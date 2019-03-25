@@ -1,4 +1,5 @@
 #include "ROM.h"
+#include "RAM.h"
 
 ROM my_rom;
 
@@ -68,6 +69,9 @@ void ROM::write32(void* address, uint32_t data){
 // length = 130 olsun
 void ROM::writeArray(void* address, void* data, uint16_t length){
 	
+	if(length == 0)
+		return;
+	
 	uint16_t addressWord = (uint16_t) address;
 	uint8_t* dataArray = (uint8_t*)data;
 	
@@ -132,32 +136,55 @@ void ROM::writeBuffer(uint16_t address, uint8_t* data, uint16_t length){
 	delay(5);
 }
 
+void ROM::copyToSpiRam(void* address, void* data, uint16_t length){
+	copy(address, data, length, 2);
+}
+
 void ROM::readArray(void* address, void* data, uint16_t length){
+	copy(address, data, length, 1);
+}
+
+void ROM::copy(void* address, void* data, uint16_t length, uint8_t memory){
+	if(length == 0)
+		return;
+	
 	uint16_t addressWord = (uint16_t)address;
 	uint8_t* dataArray = (uint8_t*)data;
 	
 	uint8_t bufferCount = length / BUFFER_READ_SIZE;
     for(uint8_t i = 0; i < bufferCount; i++){
         uint16_t nextBuffer = i * BUFFER_READ_SIZE;
-        readBuffer(addressWord + nextBuffer, data + nextBuffer, BUFFER_READ_SIZE);
+        readBuffer(addressWord + nextBuffer, data + nextBuffer, BUFFER_READ_SIZE, memory);
     }
 
     uint8_t remainingBytes = length % BUFFER_READ_SIZE;
     uint16_t offset = length - remainingBytes;
-    readBuffer(addressWord + offset, data + offset, remainingBytes);
+    readBuffer(addressWord + offset, data + offset, remainingBytes, memory);
 }
 
-void ROM::readBuffer(uint16_t address, uint8_t* data, uint16_t length){
+void ROM::readBuffer(uint16_t address, uint8_t* data, uint16_t length, uint8_t memory){
 	Wire.beginTransmission(ROM_ADDRESS);
     Wire.write((uint8_t)(address >> 8));
     Wire.write((uint8_t)address);
     Wire.endTransmission();
     Wire.requestFrom(ROM_ADDRESS, length);
-    for(uint8_t i = 0; i < length; i++){
-        if (Wire.available()){
-            data[i] = Wire.read();
-        }
-    }
+	
+	if(memory == 1){
+		for(uint8_t i = 0; i < length; i++){
+			if (Wire.available()){
+				data[i] = Wire.read();
+			}
+		}
+	}
+	else if(memory == 2){
+		RAM::startSeqWrite(data);
+		for(uint8_t i = 0; i < length; i++){
+			if (Wire.available()){
+				RAM::writeNext(Wire.read());
+			}
+		}
+		RAM::endSeqWrite();
+	}
 }
 		
 

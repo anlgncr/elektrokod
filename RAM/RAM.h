@@ -51,6 +51,10 @@ class RAM{
 		static uint8_t readNext();
 		static void endSeqRead();
 		
+		static void startSeqWrite(void*);
+		static void writeNext(uint8_t);
+		static void endSeqWrite();
+		
 		static void* malloc(uint16_t);
 		static uint8_t* pointer;
 		static SPISettings spiSetting;

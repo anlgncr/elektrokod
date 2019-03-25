@@ -58,6 +58,21 @@ uint8_t RAM::read(void *address){
 	return data;
 }
 
+void RAM::startSeqWrite(void* address){
+	selectMode(MODE_SEQ);
+	SPI_begin();
+	SPI.transfer(RAM_WRITE);
+	SPI.transfer16((uint16_t)address);	
+}
+
+void RAM::writeNext(uint8_t data){
+	SPI.transfer(data);
+}
+
+void RAM::endSeqWrite(){
+	SPI_end();
+}
+
 void RAM::startSeqRead(void* address){
 	selectMode(MODE_SEQ);
 	SPI_begin();

@@ -56,7 +56,8 @@ class Watch : public DisplayObject{
 			analogContainer.addChild(&saniye);
 			
 			newTween.setAnimation(EASE_OUT_ELASTIC);
-			indicator.setXY(128,45);
+			indicator.setY(45);
+			digitalContainer.addChild(&indicator); 
 
 			for(uint8_t i=0; i<5; i++)
 				indicator.drawLine(0, i, 45, i);
@@ -66,7 +67,7 @@ class Watch : public DisplayObject{
 			my_watch.getTime(&my_dt);
 			updateClock();
 			colon.play();
-			indicator.remove();
+			indicator.setVisibility(false);
 			set = false;
 		}
 		
@@ -103,8 +104,8 @@ class Watch : public DisplayObject{
 			if(!set){ 									//Eğer ayarlama modu kapalıysa
 				setType(DIGITAL); 						//Digitale geç
 				set = true;
+				indicator.setVisibility(true);
 				colon.gotoAndStop(0); 					//İki nokta animasyonunu durdur
-				digitalContainer.addChild(&indicator); 	//Alt çizgiyi ekle
 				selectHours();							//Saat kısmını seç
 			}
 		}
@@ -140,7 +141,7 @@ class Watch : public DisplayObject{
 		
 		void cancel(){
 			onAdded();
-			indicator.setX(128);
+			indicator.setVisibility(false);
 		}
 		
 		void onUpdate()

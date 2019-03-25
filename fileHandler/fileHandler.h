@@ -26,19 +26,6 @@ class fileHandler
 			uint16_t size;
 		}FILE;
 		
-		bool compareName(char* name1, char* name2){
-			for(uint8_t i=0; i<NAME_SIZE; i++){
-				if(name1[i] == name2[i]){
-					if(name1[i] == '\0'){
-						return true;
-					}
-				}
-				else{
-					return false;
-				}
-			}
-			return true;
-		}
 		
 		uint16_t getFileCount(){
 			uint16_t fileCount = 0;
@@ -54,25 +41,38 @@ class fileHandler
 			return fileCount;
 		}
 		
-		void readDirectoryOut(){
+		uint16_t readDirectory(uint8_t* data){
+			int fileCount = 0;
 			for(uint16_t i=0; i<MAX_FILE_COUNT; i++)
 			{
 				FILE* currentFile = (FILE*)(i * sizeof(FILE));	
 				uint16_t startSector = ROM::read16(&currentFile->startSector);
 				
 				if(startSector != 0){
-					byte file[sizeof(FILE)];
-					ROM::readArray(currentFile, file, sizeof(FILE));
-					
-					for(uint8_t j=0; j<sizeof(FILE); j++){
-						Serial.print((char)file[j]);
-					}
+					ROM::copyToSpiRam(currentFile, data + fileCount * sizeof(FILE), sizeof(FILE));
+					fileCount++;
 				}
 			}
+			return fileCount;
+		}
+		
+		void fileToSpiRam(FILE* file, uint8_t* data, uint16_t length){
+			readFile(file, data, length, 2);
+		}
+		
+		void fileToSram(FILE* file, uint8_t* data, uint16_t length){
+			readFile(file, data, length, 1);
+		}
+		
+		uint16_t readSector(uint8_t* data, uint16_t sectorAddress, uint16_t length){
+			if(!sectorAddress || length < 1){
+				return 0;
+			}
+			ROM::copyToSpiRam(sectorAddress + 2, data, SECTOR_SIZE);
+			return ROM::read16(sectorAddress);//next sector
 		}
 
-		bool getFile(char* fileName, FILE* file)
-		{	
+		bool getFile(char* fileName, FILE* file){	
 			if(fileName[0] == '\0')
 				return false;
 			
@@ -92,8 +92,18 @@ class fileHandler
 			return false;
 		}
 		
-		bool createFile(char* fileName, FILE* file)
-		{
+		bool getFileByIndex(uint8_t fileIndex, FILE* file){
+			if(fileIndex >= MAX_FILE_COUNT){
+				return false;
+			}
+			
+			uint8_t* fileAddress= fileIndex * sizeof(FILE);
+			
+			ROM::readArray(fileAddress, &file, sizeof(FILE));
+			return true;
+		}
+		
+		bool createFile(char* fileName, FILE* file){
 			if(fileName[0] == '\0' || getFile(fileName, file))
 				return false;
 			
@@ -142,8 +152,7 @@ class fileHandler
 			return length;
 		}
 		
-		bool writeFile(FILE* file, uint8_t* data, uint16_t length)
-		{
+		bool writeFile(FILE* file, uint8_t* data, uint16_t length){
 			uint16_t currentSector = file->startSector; // Dosya yazımına başlanacak ilk sektor
 			if(!currentSector)
 				return false;
@@ -192,33 +201,6 @@ class fileHandler
 			return true;
 		}
 		
-		bool appendFile(FILE* file){
-			
-		}
-		
-		void readFile(FILE* file, uint8_t* data, uint16_t length)
-		{
-			uint16_t currentSector = file->startSector;
-			if(!currentSector)
-				return;
-		
-			uint16_t currentSize = file->size;
-			if(length > currentSize){
-				length = currentSize;
-			}
-			
-			uint16_t sectorCount = (length / SECTOR_SIZE);
-			uint8_t remaningData = length % SECTOR_SIZE;
-			uint16_t sectorIndex = 0;
-			if(sectorCount > 0){
-				for(sectorIndex = 0; sectorIndex < sectorCount; sectorIndex++){
-					ROM::readArray(currentSector + 2, data + sectorIndex * SECTOR_SIZE, SECTOR_SIZE);
-					currentSector = ROM::read16(currentSector);
-				}
-			}
-			ROM::readArray(currentSector + 2, data + sectorIndex * SECTOR_SIZE, remaningData);
-		}
-		
 		bool removeFile(FILE* file){
 			uint16_t currentSector = file->startSector;
 			if(!currentSector)
@@ -265,8 +247,51 @@ class fileHandler
 		}
 	
 	private:
-		void readBlock(uint8_t* address, uint8_t* buf){
-			ROM::readArray(address, buf, SECTOR_SIZE);
+		bool compareName(char* name1, char* name2){
+			for(uint8_t i=0; i<NAME_SIZE; i++){
+				if(name1[i] == name2[i]){
+					if(name1[i] == '\0'){
+						return true;
+					}
+				}
+				else{
+					return false;
+				}
+			}
+			return true;
+		}
+		
+		bool readFile(FILE* file, uint8_t* data, uint16_t length, uint8_t memory){
+			uint16_t currentSector = file->startSector;
+			if(!currentSector)
+				return false;
+		
+			uint16_t currentSize = file->size;
+			if(length > currentSize){
+				length = currentSize;
+			}
+			
+			uint16_t sectorCount = (length / SECTOR_SIZE);
+			uint8_t remaningData = length % SECTOR_SIZE;
+			uint16_t sectorIndex = 0;
+			if(sectorCount > 0){
+				for(sectorIndex = 0; sectorIndex < sectorCount; sectorIndex++){
+					if(memory == 1){
+						ROM::readArray(currentSector + 2, data + sectorIndex * SECTOR_SIZE, SECTOR_SIZE);
+					}
+					else if(memory == 2){
+						ROM::copyToSpiRam(currentSector + 2, data + sectorIndex * SECTOR_SIZE, SECTOR_SIZE);
+					}
+					currentSector = ROM::read16(currentSector);
+				}
+			}
+			if(memory == 1){
+				ROM::readArray(currentSector + 2, data + sectorIndex * SECTOR_SIZE, remaningData);
+			}
+			else if(memory == 2){
+				ROM::copyToSpiRam(currentSector + 2, data + sectorIndex * SECTOR_SIZE, remaningData);
+			}
+			return true;
 		}
 		
 		uint16_t findFreeSector(uint16_t startAdd){
