@@ -68,8 +68,29 @@ class fileHandler
 			if(!sectorAddress || length < 1){
 				return 0;
 			}
-			ROM::copyToSpiRam(sectorAddress + 2, data, SECTOR_SIZE);
+			ROM::copyToSpiRam(sectorAddress + 2, data, length);
 			return ROM::read16(sectorAddress);//next sector
+		}
+		
+		uint16_t writeSector(uint8_t* data, uint16_t currentSector, uint16_t length, uint8_t sector){
+			if(currentSector < DATA_START_ADD || length < 1){
+				return 255;
+			}
+			ROM::copyFromSpiRam(currentSector + 2, data, length);
+			
+			if(sector == LAST_SECTOR){
+				freeSectors(currentSector);
+				return LAST_SECTOR;			
+			}
+			else{
+				uint16_t nextSector = ROM::read16(currentSector);
+				if(nextSector == LAST_SECTOR){
+					nextSector = findFreeSector(DATA_START_ADD);
+					ROM::write16(currentSector, nextSector);
+					ROM::write16(nextSector, LAST_SECTOR);
+				}
+				return nextSector;
+			}
 		}
 
 		bool getFile(char* fileName, FILE* file){	
@@ -92,15 +113,20 @@ class fileHandler
 			return false;
 		}
 		
-		bool getFileByIndex(uint8_t fileIndex, FILE* file){
+		bool getFileByIndex(uint16_t fileIndex, FILE* file){
 			if(fileIndex >= MAX_FILE_COUNT){
 				return false;
 			}
 			
-			uint8_t* fileAddress= fileIndex * sizeof(FILE);
+			uint8_t* fileAddress = fileIndex * sizeof(FILE);
 			
-			ROM::readArray(fileAddress, &file, sizeof(FILE));
+			ROM::readArray(fileAddress, file, sizeof(FILE));
 			return true;
+		}
+		
+		void setFileSize(FILE* file, uint16_t size){
+			FILE* currentFile = (FILE*)(file->fileAddress);
+			ROM::write16(&currentFile->size, size);
 		}
 		
 		bool createFile(char* fileName, FILE* file){
@@ -130,7 +156,7 @@ class fileHandler
 					tempFile.size = 0;
 					
 					ROM::writeArray((uint8_t*)fileAddress, (uint8_t*)&tempFile, sizeof(FILE));
-					ROM::write16(file->startSector, 0xFF);
+					ROM::write16(file->startSector, LAST_SECTOR);
 					//Serial.println("New file has been created");
 					return true;
 				}
@@ -187,16 +213,7 @@ class fileHandler
 			ROM::write16(&currentFile->size, length);
 			
 			//Eğer veri önceki veriden daha az sektor kaplıyor ise diğer sektorleri serbest bırak
-			uint16_t nextSector = ROM::read16(currentSector);
-			if(nextSector != LAST_SECTOR){
-				ROM::write16(currentSector, LAST_SECTOR);
-				do{
-					currentSector = nextSector;
-					nextSector = ROM::read16(currentSector);
-					ROM::write16(currentSector, FREE_SECTOR);	
-				}
-				while(nextSector != LAST_SECTOR);
-			}
+			freeSectors(currentSector);
 			//Serial.println("Write operation is complete");
 			return true;
 		}
@@ -314,6 +331,20 @@ class fileHandler
 				}
 			}
 			return 0;
+		}
+		
+		void freeSectors(uint16_t currentSector){
+			
+			uint16_t nextSector = ROM::read16(currentSector);
+			if(nextSector != LAST_SECTOR){
+				ROM::write16(currentSector, LAST_SECTOR);
+				do{
+					currentSector = nextSector;
+					nextSector = ROM::read16(currentSector);
+					ROM::write16(currentSector, FREE_SECTOR);	
+				}
+				while(nextSector != LAST_SECTOR);
+			}
 		}
 };
 #endif

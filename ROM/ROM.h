@@ -30,12 +30,15 @@ class ROM{
 		static void write32(void*, uint32_t);
 		
 		static void copyToSpiRam(void*, void*, uint16_t);
+		static void copyFromSpiRam(void*, void*, uint16_t);
 		
 	private:
-		static void writePage(uint16_t, uint8_t*, uint16_t);
-		static void writeBuffer(uint16_t, uint8_t*, uint16_t);
+		static void writeBytes(void*, void*, uint16_t, uint8_t);
+		static void readBytes(void*, void*, uint16_t, uint8_t);
+		static void writePage(uint16_t, uint8_t*, uint16_t, uint8_t);
+		static void writeBuffer(uint16_t, uint8_t*, uint16_t, uint8_t);
 		static void readBuffer(uint16_t, uint8_t*, uint16_t, uint8_t);
-		static void copy(void*, void*, uint16_t, uint8_t);
+		
 		
 };
 #endif

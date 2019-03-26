@@ -66,8 +66,16 @@ void ROM::write32(void* address, uint32_t data){
 	writeArray(address, &data, 4);
 }
 
-// length = 130 olsun
+void ROM::copyFromSpiRam(void* address, void* data, uint16_t length){
+	writeBytes(address, data, length, 2);
+}
+
 void ROM::writeArray(void* address, void* data, uint16_t length){
+	writeBytes(address, data, length , 1);
+}
+
+// length = 130 olsun
+void ROM::writeBytes(void* address, void* data, uint16_t length, uint8_t memory){
 	
 	if(length == 0)
 		return;
@@ -87,7 +95,7 @@ void ROM::writeArray(void* address, void* data, uint16_t length){
 		if(length < unAlignedLength){ //Alanın dışına çıkılmayacaksa
 			unAlignedLength = length;
 		}
-		writePage(addressWord, dataArray, unAlignedLength);
+		writePage(addressWord, dataArray, unAlignedLength, memory);
 		length -= unAlignedLength; //94 byte ROM'a yazıldı bu yüzden uzunluktan çıkarıyoruz
 	}	
 	
@@ -97,54 +105,64 @@ void ROM::writeArray(void* address, void* data, uint16_t length){
 		
 		uint16_t pageCount = length / EEPROM_PAGE_SIZE; // Kaç adet sayfa kaldı
 		for(uint8_t i=0; i<pageCount; i++){
-			writePage(addressWord, dataArray, EEPROM_PAGE_SIZE);
+			writePage(addressWord, dataArray, EEPROM_PAGE_SIZE, memory);
 			addressWord += EEPROM_PAGE_SIZE;
 			dataArray += EEPROM_PAGE_SIZE;
 			length -= EEPROM_PAGE_SIZE;
 		}
 		
 		if(length > 0){ // Geriye kaldıysa kalanları da yaz
-			writePage(addressWord, dataArray, length);
+			writePage(addressWord, dataArray, length, memory);
 		}		
 	}
 }
 
-void ROM::writePage(uint16_t address, uint8_t* data, uint16_t length){
+void ROM::writePage(uint16_t address, uint8_t* data, uint16_t length, uint8_t memory){
 	// Tam kapasitede 30 bytlık kaç buffer kullanılacak?
 	uint8_t bufferCount = length / BUFFER_WRITE_SIZE; //94 bytlık veri için 3 tam kapasitede buffer gerek
 	
 	for(uint8_t i=0; i<bufferCount; i++){
 		uint8_t nextBuffer = i * BUFFER_WRITE_SIZE;
-		writeBuffer(address + nextBuffer, data + nextBuffer, BUFFER_WRITE_SIZE);
+		writeBuffer(address + nextBuffer, data + nextBuffer, BUFFER_WRITE_SIZE, memory);
 	}
 	
 	//Geriye 4 byte kaldı
 	uint8_t remainingBytes = length % BUFFER_WRITE_SIZE;
 	uint8_t offset = length - remainingBytes; //90 byte ilerideyiz
-	writeBuffer(address + offset, data + offset, remainingBytes); //Kalan 4 byte'ı yaz
+	writeBuffer(address + offset, data + offset, remainingBytes ,memory); //Kalan 4 byte'ı yaz
 }
 
-void ROM::writeBuffer(uint16_t address, uint8_t* data, uint16_t length){	
+void ROM::writeBuffer(uint16_t address, uint8_t* data, uint16_t length, uint8_t memory){	
 	Wire.beginTransmission(ROM_ADDRESS);
 	Wire.write((uint8_t)(address >> 8));
 	Wire.write((uint8_t)address);
 	
-	for(uint8_t i=0; i<length; i++){
-		Wire.write(data[i]);
+	if(memory == 1){
+		for(uint8_t i=0; i<length; i++){
+			Wire.write(data[i]);
+		}
 	}
+	else if(memory == 2){
+		RAM::startSeqRead(data);
+		for(uint8_t i = 0; i < length; i++){
+			Wire.write(RAM::readNext());
+		}
+		RAM::endSeqRead();
+	}
+	
 	Wire.endTransmission();
 	delay(5);
 }
 
 void ROM::copyToSpiRam(void* address, void* data, uint16_t length){
-	copy(address, data, length, 2);
+	readBytes(address, data, length, 2);
 }
 
 void ROM::readArray(void* address, void* data, uint16_t length){
-	copy(address, data, length, 1);
+	readBytes(address, data, length, 1);
 }
 
-void ROM::copy(void* address, void* data, uint16_t length, uint8_t memory){
+void ROM::readBytes(void* address, void* data, uint16_t length, uint8_t memory){
 	if(length == 0)
 		return;
 	

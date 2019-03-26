@@ -88,6 +88,7 @@ void RAM::endSeqRead(){
 	SPI_end();
 }
 
+
 void RAM::writeLoop(void* address, uint8_t data, uint16_t length){
 	//selectMode(MODE_SEQ);
 	
