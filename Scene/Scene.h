@@ -15,13 +15,14 @@ class Scene : public DisplayObject{
 	public:
 		Scene(uint8_t childSize) : DisplayObject(childSize){
 			pinMode(A2, INPUT);
-			adjustBrightness();
+			
 		}
 				
 		void onUpdate(){
 			myScreen.clearBuffer();
 			updateChild(this);
 			myScreen.writeBuffer();
+			adjustBrightness();
 		}
 		
 		void updateChild(DisplayObject* child){
