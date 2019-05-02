@@ -3,13 +3,17 @@
 #include "arduino.h"
 #include "DisplayObject.h"
 #include "RAM.h"
+#include "Convert.h"
 
 class MovieClip : public DisplayObject{
 	public:
-		MovieClip(uint8_t, uint8_t**, uint8_t, uint8_t);
+		MovieClip(uint8_t);
+		MovieClip();
+		
+		bool createFromFile(char* fileName);
+		bool createFromProgmem(uint8_t **images, uint8_t frameCount, uint8_t FPS);
 		
 		void onUpdate();
-		
 		void play();
 		void playFor(uint8_t);
 		void playOnce();
@@ -43,14 +47,14 @@ class MovieClip : public DisplayObject{
 			uint8_t lastFrame;
 		};
 		object *my_object;
-		
-		void getType();
+			
+		bool createMovieClip(uint8_t**, uint8_t, uint8_t);
 		
 		void copyObject(object*, object*);
 		void loadObject(object*, object*);
 		void playMovie();
 		uint32_t getPassedTime();
-		uint8_t** getImages();
+		uint8_t* getImageAt(uint8_t); //SPI RAM için
 		
 		uint32_t getFrameChangeTime(uint8_t);
 		void setRepeatCount(uint8_t);

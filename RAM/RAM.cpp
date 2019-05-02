@@ -1,5 +1,7 @@
 #include "RAM.h"
-uint8_t* RAM::pointer = (uint8_t*)1;
+uint8_t* RAM::heap_pointer = (uint8_t*)0x0001;
+uint8_t* RAM::stack_pointer = (uint8_t*)0x7FFF;
+
 SPISettings RAM::spiSetting = SPISettings(16000000, MSBFIRST, SPI_MODE0);
 RAM my_spi_ram;
 
@@ -88,7 +90,6 @@ void RAM::endSeqRead(){
 	SPI_end();
 }
 
-
 void RAM::writeLoop(void* address, uint8_t data, uint16_t length){
 	//selectMode(MODE_SEQ);
 	
@@ -103,8 +104,7 @@ void RAM::writeLoop(void* address, uint8_t data, uint16_t length){
 }
 
 void RAM::writeArray(void* address, void* data, uint16_t length){
-	//selectMode(MODE_SEQ);
-	
+	//selectMode(MODE_SEQ);	
 	SPI_begin();
 	SPI.transfer(RAM_WRITE);
 	SPI.transfer16((uint16_t)address);	
@@ -185,18 +185,37 @@ uint32_t RAM::read32(void* address){
 	return var;
 }
 
+
+//-----------------------------> Memory Allocation
+
 void* RAM::malloc(uint16_t size){
 	if(size == 0)
 		return NULL;
 	
-	uint16_t current_heap_size = (word)pointer + size;
+	uint16_t current_heap_size = heap_pointer + size;
 	if(current_heap_size >= MEMORY_SIZE)
 		return NULL;
 	
-	uint8_t* temp_pointer = pointer;
-	writeLoop(pointer, 0, size);
-	pointer +=size;
+	uint8_t* temp_pointer = heap_pointer;
+	writeLoop(heap_pointer, 0, size);
+	heap_pointer +=size;
+	
 	return temp_pointer;
+}
+
+void* RAM::mallocStack(uint16_t size){
+	stack_pointer -= (size + 2);
+	writeLoop(stack_pointer, 0, size);
+	write16(stack_pointer, size);
+	
+	return stack_pointer + 2;
+}
+
+void RAM::popStack(){
+	if(stack_pointer == 0x7FFF)
+		return;
+	
+	stack_pointer += (read16(stack_pointer) + 2);	
 }
 
 

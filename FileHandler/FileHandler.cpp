@@ -2,22 +2,66 @@
 
 /*
 	Toplam hafıza : 65536 bytes
-	Ayırma boyuyu : 112 bytes
+	Ayırma boyutu : 112 bytes
 	Azami dosya sayısı : 512 files
 	Azami dosya boyutu : 55 Kilobytes
-	Asgari dosya boyutu : 110 bytes
+	Sektör boyutu : 110 bytes
 	
 	•Bu kütüphane 64kb'lık alana sahip hafıza için yazıldı.
 	•Hafızanın ilk 8kb'lık kısmı directory için ayrıldı.
-	•Geriye kalan 56 kb'lık alan ise 112 byte'lık sektorlere ayrıldı.
+	•Geriye kalan 56 kb'lık alan ise 112 byte'lık sektörlere ayrıldı.
 	•Toplam 512 sektör bulunuyor. Bu yüzden en fazla 512 dosya oluşturulabilir.
 	•Her söktörün başında onu diğer sektörlere bağlamak için
-	 bağlı bulunduğu sektörün adresi bulunuyor. Eğer dosya tek sektörden oluşuyorsa sektörün
-	 başındaki adres kısmında onun tek sektörden oluştuğunu belirten LAST_SECTOR durumu bulunur.
+	 bağlı bulunduğu sektörün adresi ve son sektörde LAST_SECTOR ibaresi bulunur. 
 	•Dosya isimleri 10 karakteri geçmemeli, buna dosya adı ile uzantıyı ayıran nokta da dahil.
 */
 
-FileHandler::FileHandler(){}
+FileHandler::FileHandler(){
+
+}
+
+uint16_t FileHandler::checkFileError(){
+	uint16_t error = 0;
+	for(int i=0; i<MAX_FILE_COUNT; i++){
+		int calSectorCount = calculateFileSize(i);
+		if(calSectorCount != 0){
+			FILE *currentFile = (FILE*)(i * sizeof(FILE));
+			uint16_t fileSize = ROM::read16(&currentFile->size);
+			if(fileSize == 0){
+				error++;
+				ROM::write16(&currentFile->size, calSectorCount * SECTOR_SIZE);
+			}
+			else{
+				uint16_t sectorCount = fileSize / SECTOR_SIZE;
+				sectorCount += (fileSize % SECTOR_SIZE == 0)? 0 : 1;
+				if(sectorCount != calSectorCount){
+					error++;
+					ROM::write16(&currentFile->size, calSectorCount * SECTOR_SIZE);
+				}
+			}
+		}
+	}
+	return error;
+}
+
+uint16_t FileHandler::calculateFileSize(uint16_t fileIndex){
+	FILE *currentFile = (FILE*)(fileIndex * sizeof(FILE));
+	
+	uint16_t startSector = ROM::read16(&currentFile->startSector);
+	if(startSector == 0)
+		return 0;
+	
+	uint16_t size = 1;
+	uint16_t nextSector = ROM::read16(startSector);
+	if(nextSector != LAST_SECTOR){
+		do{
+			size++;
+			nextSector = ROM::read16(nextSector);
+		}
+		while(nextSector != LAST_SECTOR);
+	}
+	return size;
+}
 
 uint16_t FileHandler::getFileCount(){
 	uint16_t fileCount = 0;
@@ -42,7 +86,8 @@ uint16_t FileHandler::getFreeSectorCount(){
 		
 		if(startSector != 0){
 			uint16_t fileSize = ROM::read16(&currentFile->size);
-			sectorCount += fileSize / SECTOR_SIZE + 1;
+			sectorCount += fileSize / SECTOR_SIZE;
+			sectorCount += (fileSize % SECTOR_SIZE) ? 0 : 1;
 		}
 	}
 	return MAX_FILE_COUNT - sectorCount;
@@ -80,7 +125,7 @@ uint16_t FileHandler::readSector(uint8_t* data, uint16_t currentAddress, uint16_
 }
 
 uint16_t FileHandler::writeSector(uint8_t* data, uint16_t currentSector, uint16_t length, uint8_t sector){
-	if(currentSector < DATA_START_ADD || length < 1){
+	if(currentSector < DATA_START_ADD){
 		return 0;
 	}
 	ROM::copyFromSpiRam(currentSector + 2, data, length);//Veriyi RAM'den ROM'a kopyala
@@ -114,10 +159,13 @@ uint8_t FileHandler::getFile(char* fileName, FILE* file){
 		ROM::readArray(&currentFile->name, name, NAME_SIZE);
 		
 		if(compareName(name, fileName)){
-			file->fileAddress = i * sizeof(FILE);
-			file->startSector = ROM::read16(&currentFile->startSector);
-			file->size = ROM::read16(&currentFile->size);
+			if(file != NULL){
+				file->fileAddress = i * sizeof(FILE);
+				file->startSector = ROM::read16(&currentFile->startSector);
+				file->size = ROM::read16(&currentFile->size);
+			}
 			return true;
+			
 		}
 	}
 	return false;
@@ -134,9 +182,14 @@ uint8_t FileHandler::getFileByIndex(uint16_t fileIndex, FILE* file){
 	return true;
 }
 
-void FileHandler::setFileSize(FILE* file, uint16_t size){
-	FILE* currentFile = (FILE*)(file->fileAddress);
+void FileHandler::renameFileByIndex(uint16_t fileIndex, uint8_t* name){
+	ROM::writeArray(fileIndex * sizeof(FILE), name, 10);
+}
+
+uint16_t FileHandler::setFileSizeByIndex(uint16_t fileIndex, uint16_t size){
+	FILE* currentFile = (FILE*)(fileIndex * sizeof(FILE));
 	ROM::write16(&currentFile->size, size);
+	return ROM::read16(&currentFile->size);
 }
 
 uint8_t FileHandler::createFile(char* fileName, FILE* file){

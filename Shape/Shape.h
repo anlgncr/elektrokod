@@ -6,43 +6,41 @@
 
 class Shape : public DisplayObject{
 	public:
-		Shape(uint8_t childSize, uint8_t width, uint8_t height) : DisplayObject(childSize){
+		Shape(uint8_t childSize) : DisplayObject(childSize){};
+		Shape() : DisplayObject(0){};
+		
+		void create(uint16_t width, uint16_t height){
 			if(width == 0 || height == 0)
 				return;
 			
-			uint8_t	rowCount;
-			
-			if(height % 8 == 0)
-				rowCount = height / 8;
-			else			
-				rowCount = height / 8 + 1;
-			
-			uint8_t *image = (uint8_t*)RAM::malloc(width * rowCount + 2);
-			if(!image)
-				return;
-			
-			RAM::write(&image[0], width);
-			RAM::write(&image[1], rowCount);	
+			uint16_t rowCount = height / 8;
+			rowCount += ((height % 8) == 0) ? 0 : 1;
+	
+			uint8_t *image = (uint8_t*)RAM::malloc(width * rowCount + 4);
+			if(!image) { return; }
+				
+			RAM::write16(&image[0], width);
+			RAM::write16(&image[2], rowCount * 8);
 			
 			setMemory(SPIMEM);
 			setImage(image);
 			setHeight(height);
 			setWidth(width);
-		};
+		}
 		
-		void putPixel(int16_t x, int16_t y){
-			uint8_t width = getCanvasWidth();
+		void putPixel(int16_t x, int16_t y){		
+			uint16_t width = getWidth();
 			if(x >= width || x < 0)
 				return;
 			
-			uint16_t height = getCanvasHeight() * 8;
+			uint16_t height = getHeight();
 			if(y >= height || y < 0)
 				return;
 			
 			uint8_t currentRow = y / 8;
 			uint8_t shift = y % 8;
 			
-			uint8_t *image = &getImage()[2];
+			uint8_t *image = &(getImage()[4]);
 			uint8_t(*image_array)[width];
 			image_array = (uint8_t(*)[width])(image);
 	
@@ -51,6 +49,9 @@ class Shape : public DisplayObject{
 		};
 		
 		void drawLine(int16_t x1, int16_t y1, int16_t x2, int16_t y2){
+			if(!getImage())
+				return;
+			
 			int16_t disX = x2 - x1;
 			int16_t disY = y2 - y1;
 			
@@ -68,6 +69,9 @@ class Shape : public DisplayObject{
 		};
 		
 		void drawCircle(int16_t x, int16_t y, int16_t radius){
+			if(!getImage())
+				return;
+			
 			for(float i=0; i<360; i++){
 				float radian = (i / 180) * PI;
 				int16_t x1 = round(sin(radian) * radius) + x;
@@ -77,8 +81,11 @@ class Shape : public DisplayObject{
 		};
 		
 		void drawRectangle(int16_t x, int16_t y, uint16_t rect_width, uint16_t rect_height){
-			uint8_t width = getCanvasWidth();
-			uint16_t height = getCanvasHeight() * 8;
+			if(!getImage())
+				return;
+			
+			uint16_t width = getWidth();
+			uint16_t height = getHeight();
 			
 			if(x >= width || y >= height || x + width <= 0 || y + height <= 0)
 				return;
@@ -106,11 +113,11 @@ class Shape : public DisplayObject{
 		};
 		
 		void fill(){
-			uint8_t width = getCanvasWidth();
-			uint8_t height = getCanvasHeight();
+			uint16_t width = getWidth();
+			uint16_t height = getHeight() / 8;
 			uint8_t shift = getHeight() % 8;
 			
-			uint8_t *image = &getImage()[2];
+			uint8_t *image = &getImage()[4];
 			uint8_t(*image_array)[width];
 			image_array = (uint8_t(*)[width])(image);
 			
@@ -127,10 +134,10 @@ class Shape : public DisplayObject{
 		}
 		
 		void clear(){
-			uint8_t width = getCanvasWidth();
-			uint8_t height = getCanvasHeight();
+			uint16_t width = getWidth();
+			uint16_t height = getHeight() / 8;
 			
-			RAM::writeLoop(&getImage()[2], 0x00, width * height);
+			RAM::writeLoop(&getImage()[4], 0x00, width * height);
 		}
 		
 		uint8_t update(){

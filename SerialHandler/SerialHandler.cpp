@@ -4,7 +4,7 @@ SerialHandler::SerialHandler(){
 	readStartTime = 0;
 	cmd = NOOP;
 	status = COMMAND;
-	incomingData = (uint8_t*)RAM::malloc(112);	
+	incomingData = (uint8_t*)RAM::malloc(128);	// 110 byte veri, 18 byte parametreler için
 }
 
 void SerialHandler::flushBuffer(){
@@ -45,18 +45,23 @@ void SerialHandler::processByte(const char data)
 				Serial.println(F("Format tamamlandi."));
 				cmd = NOOP;
 			}
+			else if(cmd == CHECK_ERROR){
+				uint16_t errorCount = myFileHandler.checkFileError();
+				Serial.write((uint8_t*)&errorCount, 2);
+				cmd = NOOP;
+			}
 			else if(cmd == GET_FILE_COUNT){
-				Serial.println(myFileHandler.getFileCount());
+				uint16_t fileCount = myFileHandler.getFileCount();
+				Serial.write((uint8_t*)&fileCount, 2);
 				cmd = NOOP;
 			}
 			else if(cmd == GET_FREE_SECTOR_COUNT){
 				uint16_t sectorCount = myFileHandler.getFreeSectorCount();
-				uint8_t data[2] = {sectorCount, sectorCount >> 8};
-				Serial.write(data, 2);
+				Serial.write((uint8_t*)&sectorCount, 2);
 				cmd = NOOP;
 			}
-			else if(cmd == WRITE_SECTOR || cmd == READ_SECTOR 	|| cmd == GET_FILE_ATTRIBUTE || 
-					cmd == REMOVE_FILE 	|| cmd == NEW_FILE		|| cmd == RESIZE)
+			else if(cmd == READ_SECTOR 	|| cmd == GET_FILE_ATTRIBUTE || cmd == START_WRITE ||
+					cmd == REMOVE_FILE 	|| cmd == NEW_FILE		|| cmd == RESIZE 	|| cmd == RENAME)
 			{
 				readStartTime = millis();
 				status = RECEIVE;
@@ -64,8 +69,29 @@ void SerialHandler::processByte(const char data)
 				dataLength = 0;
 			}
 			else if(cmd == READ_DIRECTORY){
+				uint16_t fileCount = myFileHandler.getFileCount();
+				Serial.write((uint8_t*)&fileCount, 2);
+				
+				FileHandler::FILE currentFile;
+				for(int i=0; i<512; i++){
+					myFileHandler.getFileByIndex(i, &currentFile);
+					if(currentFile.startSector != 0){
+						Serial.write((uint8_t*)&currentFile, sizeof(FileHandler::FILE));
+					}
+				}
+				cmd = NOOP;
+			}
+			else if(cmd == WRITE_NEXT){
 				readStartTime = millis();
-				status = TRANSMIT;
+				status = RECEIVE;
+			}
+			else if(cmd == END_WRITE){
+				uint16_t currentSector = RAM::read16(incomingData + 1);
+				uint16_t length = RAM::read16(incomingData + 3);
+				uint8_t isThisLastSector = RAM::read(incomingData + 5);
+				
+				uint16_t nextSector = myFileHandler.writeSector(incomingData + 6, currentSector, length, isThisLastSector);
+				Serial.write((uint8_t*)&nextSector, 2);
 			}
 			else{ cmd = NOOP; }					
 		}
@@ -86,29 +112,43 @@ void SerialHandler::processByte(const char data)
 		else if((dataPtr - 2) < dataLength){
 			RAM::write(&incomingData[dataPtr - 2], data);
 			dataPtr++;
-		}
-		else{ 
-			status = COMMAND;
-
-			if(cmd == WRITE_SECTOR){
-				uint16_t currentSector = RAM::read16(incomingData);
-				uint16_t length = RAM::read16(incomingData + 2);
-				uint8_t isThisLastSector = RAM::read(incomingData + 4);
-				
-				uint16_t nextSector = myFileHandler.writeSector(incomingData + 5, currentSector, length, isThisLastSector);
-				uint8_t data[2] = { (uint8_t)nextSector, (uint8_t)(nextSector >> 8) };
-				Serial.write(data, 2);
+			
+			if(cmd == START_WRITE){
+				if((dataPtr - 2) == 6){ //Parametreler geldiyse cevap ver
+					Serial.write('O');
+					status = COMMAND;
+				}
 			}
-			else if(cmd == READ_SECTOR){
+			else if(cmd == WRITE_NEXT){
+				uint8_t dataSize = RAM::read(incomingData);
+				uint8_t addPtr = (dataPtr - 2) - 6; // veri öncesi parametreler için 6 byte ayrıldı
+				if((addPtr % (dataLength - 6)) == 0 || (addPtr % dataSize) == 0){
+					Serial.print('O');
+					status = COMMAND;
+				}
+			}
+		}
+		else{
+			status = COMMAND;
+			if(cmd == READ_SECTOR){
 				uint16_t currentSector = RAM::read16(incomingData);
 				uint16_t length = RAM::read16(incomingData + 2);
 				
 				uint16_t nextSector = myFileHandler.readSector(incomingData, currentSector, length);
-				for(uint8_t i=0; i<length; i++){
-					Serial.write(RAM::read(&incomingData[i]));
+				uint8_t partCount = length / 55;
+				uint8_t remainingPart = length % 55;
+				
+				byte serialBuffer[55];
+				byte i;
+				for(i=0 ;i<partCount; i++){
+					RAM::readArray(incomingData + i*55, serialBuffer, 55);
+					Serial.write(serialBuffer, 55);
 				}
-				uint8_t data[2] = { (uint8_t)nextSector, (uint8_t)(nextSector >> 8) };
-				Serial.write(data, 2);
+				if(remainingPart !=0){
+					RAM::readArray(incomingData + i*55, serialBuffer, remainingPart);
+					Serial.write(serialBuffer, remainingPart);
+				}
+				Serial.write((uint8_t*)&nextSector, 2);
 			}
 			else if(cmd == NEW_FILE){
 				char name[10];
@@ -134,12 +174,22 @@ void SerialHandler::processByte(const char data)
 			else if(cmd == RESIZE){
 				uint16_t fileIndex = RAM::read16(incomingData);
 				uint16_t fileSize = RAM::read16(incomingData + 2);
+			
+				uint16_t newSize = myFileHandler.setFileSizeByIndex(fileIndex, fileSize);
+				Serial.write((uint8_t*)&newSize, 2);
+			}
+			else if(cmd == RENAME){
+				uint16_t fileIndex = RAM::read16(incomingData);
+				char name[10];
+				RAM::readArray(incomingData + 2, name, 10);
 				
-				FileHandler::FILE newFile = {};
-				myFileHandler.getFileByIndex(fileIndex, &newFile);
-				myFileHandler.setFileSize(&newFile, fileSize);
-				uint8_t data[2] = {(uint8_t)newFile.size, (uint8_t)(newFile.size >> 8)};
-				Serial.write(data, 2);
+				if(myFileHandler.getFile(name, NULL)){
+					Serial.write(0x00);
+				}
+				else{
+					myFileHandler.renameFileByIndex(fileIndex, name);
+					Serial.write(0xFF);
+				}
 			}
 			else if(cmd == GET_FILE_ATTRIBUTE){
 				uint16_t fileIndex = RAM::read16(incomingData);
@@ -148,21 +198,5 @@ void SerialHandler::processByte(const char data)
 				Serial.write((uint8_t*)&newFile, 16);
 			}
 		}
-	}//-------------------------------------------> TRANSMIT*/
-	else if(status == TRANSMIT)	
-	{
-		if(cmd == READ_DIRECTORY){
-			uint16_t fileCount = myFileHandler.readDirectory(incomingData);
-			Serial.write((byte)fileCount);
-			Serial.write((byte)(fileCount >> 8));
-			
-			RAM::startSeqRead(incomingData);
-			for(int i=0; i<fileCount * sizeof(FileHandler::FILE); i++){
-				Serial.write(RAM::readNext());
-			}
-			RAM::endSeqRead();
-			status = COMMAND;
-		}
-		
 	}
 }

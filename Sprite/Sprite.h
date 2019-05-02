@@ -3,24 +3,18 @@
 #include "arduino.h"
 #include "DisplayObject.h"
 #include "RAM.h"
+#include "Convert.h"
 
 class Sprite : public DisplayObject{
 	public:
-		Sprite() : DisplayObject(0){
-			
-		}
+		Sprite();
+		Sprite(uint8_t childSize);
+
+		void draw(uint8_t* image);
+		void drawFromProgmem(uint8_t* image);
+		bool drawFromFile(char* fileName);
 		
-		Sprite(uint8_t childSize) : DisplayObject(childSize){
-			
-		}
-		
-		Sprite(uint8_t* image, uint8_t childSize, uint8_t memory) : DisplayObject(childSize){
-			setImage(image);
-		}
-		
-		uint8_t update(){
-			
-		}
+		uint8_t update();
 
 		
 	private:

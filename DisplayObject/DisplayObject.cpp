@@ -1,7 +1,6 @@
 #include "DisplayObject.h"
 #include "Manager.h"
 
-
 DisplayObject::DisplayObject(uint8_t childSize){
 	my_object = (object*)RAM::malloc(sizeof(object));
 	if(!my_object)
@@ -15,7 +14,7 @@ DisplayObject::DisplayObject(uint8_t childSize){
 			return;
 	}
 	
-	new_object.events = (eventObject**)RAM::malloc(sizeof(eventObject*) * 4); //4 adet durum var
+	new_object.events = (eventObject**)RAM::malloc(sizeof(eventObject*) * 10); // Max 10 listener
 	new_object.eventSize = 10;
 	new_object.childSize = childSize;
 	new_object.visibility = true;
@@ -33,12 +32,12 @@ void DisplayObject::loadObject(object* obj1, object* obj2){
 }
 
 void DisplayObject::moveX(int16_t pixel){
-	float ratio = (float)Manager::getProcessTime() / 1000;
+	float ratio = (float)Manager::getProcessTime() / (float)1000;
 	setX(getX() + round(ratio * pixel));
 }
 
 void DisplayObject::moveY(int16_t pixel){
-	float ratio = (float)Manager::getProcessTime() / 1000;
+	float ratio = (float)Manager::getProcessTime() / (float)1000;
 	setX(getY() + round(ratio * pixel));
 }
 
@@ -110,44 +109,46 @@ void DisplayObject::setChildIndex(DisplayObject* child, uint8_t targetIndex){
 		return;
 	
 	uint8_t childCount = getChildCount();
-	DisplayObject* children[childCount] = {};
+	DisplayObject* children = RAM::mallocStack(childCount * sizeof(DisplayObject*));
 	
 	for(uint8_t i=0; i<childCount; i++){
 		DisplayObject* child = getChildAt(i);
-		if(child)
-			children[child->getIndex()] = child;
+		if(child){
+			RAM::write16(&children[child->getIndex()], child);
+		}
 	}
 	
 	if(childIndex > targetIndex){
 		for(uint8_t i=0; i<childIndex - targetIndex; i++){
-			DisplayObject* object =  children[childIndex - i - 1];
+			DisplayObject* object = RAM::read16(&children[childIndex - i - 1]);
 			if(object)
 				object->setIndex(childIndex - i);
 		}
 	}
 	else{
 		for(uint8_t i=childIndex; i<targetIndex; i++){
-			DisplayObject* object = children[i + 1];
+			DisplayObject* object = RAM::read16(&children[i + 1]);
 			if(object)
 				object->setIndex(i);
 		}	
 	}
 	child->setIndex(targetIndex);
 	setChildIndexChanged(true);
+	RAM::popStack();
 }
 
-DisplayObject* DisplayObject::contains(DisplayObject* child){
+bool DisplayObject::contains(DisplayObject* child){
 	if(child == NULL)
-		return NULL;
+		return false;
 	
 	uint8_t childCount = getChildCount();
 	for(uint8_t i=0; i<childCount; i++){
 		DisplayObject *current_displayObject = getChildAt(i);
 		if(current_displayObject == child){
-			return child;
+			return true;
 		}
 	}	
-	return NULL;
+	return false;
 }
 
 void DisplayObject::addChild(DisplayObject* child){
@@ -239,11 +240,14 @@ void DisplayObject::disposeChild(){
 }
 
 void DisplayObject::dispatchEventAll(uint8_t event){
-	dispatchEventAll(event, this);
+	EventArgs e;
+	e.setSender(this);
+	e.setEventName(event);
+	dispatchEventAll(&e);
 }
 
-void DisplayObject::dispatchEventAll(uint8_t event, DisplayObject* source_object){
-	updateEvent(event, source_object);
+void DisplayObject::dispatchEventAll(EventArgs* e){
+	updateEvent(e);
 	uint8_t childCount = getChildCount();
 	
 	if(childCount > 0){
@@ -252,10 +256,9 @@ void DisplayObject::dispatchEventAll(uint8_t event, DisplayObject* source_object
 			DisplayObject *object = getChildAt(i);
 			
 			if(object){
-				object->dispatchEventAll(event, source_object);
+				object->dispatchEventAll(e);
 			}
-		}
-		
+		}	
 	}
 }
 
@@ -273,7 +276,6 @@ void DisplayObject::applyChildChanges(){
 		for(uint8_t i=0; i<childCount; i++){
 			setChildAt(i, children[i]);
 		}
-		
 		setChildIndexChanged(false);
 	}
 	
@@ -284,23 +286,27 @@ void DisplayObject::applyChildChanges(){
 }
 
 void DisplayObject::dispatchEvent(uint8_t event){
-	dispatchEvent(event, this);
+	EventArgs e;
+	e.setSender(this);
+	e.setEventName(event);
+	dispatchEvent(&e);
 }
 
-void DisplayObject::dispatchEvent(uint8_t event, DisplayObject* source_object){
+void DisplayObject::dispatchEvent(EventArgs* e){
 	DisplayObject *parent = getParent();
 	if(parent != NULL){
-		parent->dispatchEvent(event, source_object); //Bubbling ..oooOOO
+		parent->dispatchEvent(e); //Bubbling ..oooOOO
 	}
 	
 	if(parent){
-		updateEvent(event, source_object); //Catching \☻/
+		parent->updateEvent(e); //Catching \☻/
 	}
 }
 
-void DisplayObject::updateEvent(uint8_t event, DisplayObject* source_object){
+void DisplayObject::updateEvent(EventArgs* e){
 	uint8_t eventCount = getEventCount();
-	uint8_t info = source_object->getEventInfo();
+	uint16_t info = e->getData();
+	uint8_t event = e->getEventName();
 	
 	switch(event){
 		case BUTTON_DOWN: onButtonDown(info); break;
@@ -308,14 +314,15 @@ void DisplayObject::updateEvent(uint8_t event, DisplayObject* source_object){
 		case BUTTON_LONG_DOWN: onButtonLongDown(info); break;
 		default : onSpecificEvent(event);
 	}
-	
+
 	for(uint8_t i=0; i<eventCount; i++){
 		eventObject *event_object = getEventAt(i);
 		uint8_t my_event = getEvent(event_object);
 		if(my_event == event){
 			eventFunction function = getEventFunction(event_object);
 			if(function){
-				function(source_object);
+				e->setReceiver(this);
+				function(e);
 			}
 		}
 	}
@@ -445,9 +452,9 @@ uint8_t DisplayObject::getMaskType(){
 	return RAM::read(&my_object->maskType);
 }
 
-uint8_t DisplayObject::getEventInfo(){
+/*uint8_t DisplayObject::getEventInfo(){
 	return RAM::read(&my_object->eventInfo);
-}
+}*/
 
 uint8_t* DisplayObject::getExternalMask(){
 	return RAM::readPtr(&my_object->externalMask);
@@ -460,9 +467,9 @@ void DisplayObject::setExternalMask(uint8_t* mask){
 	RAM::writePtr(&my_object->externalMask, mask);
 }
 
-void DisplayObject::setEventInfo(uint8_t value){
+/*void DisplayObject::setEventInfo(uint8_t value){
 	RAM::write(&my_object->eventInfo, value);
-}
+}*/
 
 void DisplayObject::setMaskType(uint8_t value){
 	RAM::write(&my_object->maskType, value);
@@ -547,7 +554,7 @@ void DisplayObject::setName(char* name){
 void DisplayObject::setImage(uint8_t* image){
 	RAM::writePtr(&my_object->image, image);
 	if(getHeight() == 0)
-		setHeight(getCanvasHeight() * 8);
+		setHeight(getCanvasHeight());
 	
 	if(getWidth() == 0)
 		setWidth(getCanvasWidth());
@@ -684,18 +691,18 @@ int16_t DisplayObject::getGlobalY(){
 	return RAM::read16(&my_object->globalY);
 }
 
-uint8_t DisplayObject::getCanvasWidth(){
+uint16_t DisplayObject::getCanvasWidth(){
 	if(getMemory() == SPIMEM)
-		return RAM::read(&getImage()[0]);
+		return RAM::read16(&getImage()[0]);
 	else
-		return pgm_read_byte(&getImage()[0]);
+		return pgm_read_word(&getImage()[0]);
 }
 
-uint8_t DisplayObject::getCanvasHeight(){
+uint16_t DisplayObject::getCanvasHeight(){
 	if(getMemory() == SPIMEM)
-		return RAM::read(&getImage()[1]);
+		return RAM::read16(&getImage()[2]);
 	else
-		return pgm_read_byte(&getImage()[1]);
+		return pgm_read_word(&getImage()[2]);
 }
 
 uint16_t DisplayObject::getWidth(){

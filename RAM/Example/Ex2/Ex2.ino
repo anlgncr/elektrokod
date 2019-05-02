@@ -1,21 +1,21 @@
 #include <RAM.h>
 
-
 void setup() {
   Serial.begin(9600);
-  RAM::init();
 
-  byte *x = (byte*)RAM::malloc(20);
-  byte a[20] = {255,0,3,4,5,6,7,8,9,0,11,22,33,55,66,77,88,99,100};
-  RAM::writeArray(x,a, 20);
-
-  byte b[20];
-
-  RAM::readArray(x,b,20);
-
-  for(byte i=0; i<20; i++)
-   Serial.println(b[i]);
-
+  uint8_t* image = (uint8_t*)RAM::mallocStack(64);
+  Serial.println((uint16_t)image);
+  Serial.println((uint16_t)RAM::stack_pointer);
+  
+  uint8_t* image2 = (uint8_t*)RAM::mallocStack(128);
+  Serial.println((uint16_t)image2);
+  Serial.println((uint16_t)RAM::stack_pointer);
+  
+  RAM::popStack();
+  Serial.println((uint16_t)RAM::stack_pointer);
+  
+  RAM::popStack();
+  Serial.println((uint16_t)RAM::stack_pointer);
 }
 
 void loop() {

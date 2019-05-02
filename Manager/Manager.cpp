@@ -2,11 +2,19 @@
 
 Updater Manager::updater(100);
 Scene Manager::scene(100);
+FileHandler Manager::fileHandler;
+uint8_t* Manager::charset;
+
 uint8_t Manager::button_code = 0;
 uint32_t Manager::processTime = 0;
 
 uint32_t Manager::getProcessTime(){
 	return processTime;
+}
+
+uint8_t Manager::getBrightness(){
+	uint8_t brightness = map(analogRead(A2), 0, 1023, 0, 255);
+	return (255 - brightness);
 }
 
 void Manager::buttonListener(Button* my_button){ 
@@ -20,9 +28,11 @@ void Manager::buttonListener(Button* my_button){
 	else
 		return;
 	
-	button_code = my_button->getCode();
-	scene.setEventInfo(button_code);
-	scene.dispatchEventAll(button_event);
+	EventArgs e;
+	e.setSender(&scene);
+	e.setEventName(button_event);
+	e.setData(my_button->getCode());
+	scene.dispatchEventAll(&e);
 }
 
 Manager::Manager():
@@ -33,15 +43,33 @@ Manager::Manager():
 	button_X(BUTTON_X,buttonListener),button_Y(BUTTON_Y,buttonListener)
 {		  
 	SPI.begin();
+	
+	pinMode(LIGHT_SENSOR, INPUT);
 	pinMode(CHARGE_STATUS_PIN, INPUT);
 	pinMode(BUZZER_PIN, OUTPUT);
 	spiSetting = SPISettings(16000000, MSBFIRST, SPI_MODE0);
 	
 	button_X.setInputType(PARALEL_INPUT);
 	button_Y.setInputType(PARALEL_INPUT);
+	
+	run();
+}
+
+void Manager::begin(){
+	Serial.begin(115200);
+	
+	FileHandler::FILE newFile;
+	if(Manager::fileHandler.getFile("c.bmp", &newFile)){	
+		charset = RAM::malloc(newFile.size);
+		fileHandler.fileToSpiRam(&newFile, charset, newFile.size);
+		charset += 5; // width + height + mask
+	}
 }
 
 void Manager::run(){
+	while(Serial.available())
+		serialHandler.processByte(Serial.read());
+	
 	static uint32_t lastMillis = 0;
 	
 	updateButtons();
@@ -52,7 +80,6 @@ void Manager::run(){
 	for(uint8_t i=0; i<scene.getChildCount(); i++){
 		updateDisplayObjects(scene.getChildAt(i));
 	}
-	
 	processTime = millis() - lastMillis;
 	lastMillis = millis();
 }
@@ -116,6 +143,7 @@ uint8_t Manager::isButtonDown(uint8_t code){
 		case CODE_X : return button_X.isDown();
 		case CODE_Y : return button_Y.isDown();
 	}
+	return false;
 }
 
 

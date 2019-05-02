@@ -11,6 +11,7 @@ Button::Button(uint8_t button_pin, fPtr onChanged){
 		new_button.up = true;
 		new_button.longPressedTime = 500;
 		new_button.onChanged = onChanged;
+		new_button.up_lastTime = DEBOUNCE_TIME;
 		copyObject(&new_button, my_object);
 	}
 }
@@ -50,7 +51,7 @@ void Button::update(uint8_t data)
 	if(data & getPin())
 	{
 		RAM::write32(&my_object->down_lastTime, millis());
-		if(RAM::read(&my_object->up) && (millis() - RAM::read32(&my_object->up_lastTime)) > DEBOUNCE_TIME){
+		if(RAM::read(&my_object->up) && (millis() - RAM::read32(&my_object->up_lastTime)) >= DEBOUNCE_TIME){
 			RAM::write(&my_object->up, false);
 			RAM::write(&my_object->down, true);
 			RAM::write(&my_object->pushed, true);
@@ -60,7 +61,7 @@ void Button::update(uint8_t data)
 	else
 	{
 		RAM::write32(&my_object->up_lastTime, millis());
-		if(RAM::read(&my_object->down) && (millis() - RAM::read32(&my_object->down_lastTime)) > DEBOUNCE_TIME){
+		if(RAM::read(&my_object->down) && (millis() - RAM::read32(&my_object->down_lastTime)) >= DEBOUNCE_TIME){
 			RAM::write(&my_object->up, true);
 			RAM::write(&my_object->down, false);
 			RAM::write(&my_object->released, true);

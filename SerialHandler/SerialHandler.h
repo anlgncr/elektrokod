@@ -13,13 +13,18 @@ class SerialHandler{
 
 		void flushBuffer();
 		void processByte(const char data);
-	
+		
 		typedef enum {
 			NOOP = '\0',
 			OKAY = 'O', 
 			HEY = 'H',
 			RESIZE = 'Z',
-			WRITE_SECTOR = 'W',
+			RENAME = 'A',
+			
+			START_WRITE = 'Y',
+			WRITE_NEXT = 'X',
+			END_WRITE = 'W',
+			
 			READ_SECTOR = 'S', 
 			READ_DIRECTORY = 'D', 
 			NEW_FILE = 'N',
@@ -28,11 +33,12 @@ class SerialHandler{
 			GET_FREE_SECTOR_COUNT = 'U',
 			GET_FILE_ATTRIBUTE = 'T',
 			FORMAT = 'F',
+			CHECK_ERROR = 'E'
 		}
 		commands;
 
 		typedef enum {NONE, COMMAND, TRANSMIT, RECEIVE} serialStat;
-
+		
 		private:
 			FileHandler myFileHandler;
 			uint8_t* incomingData;

@@ -2,8 +2,6 @@
 
 Screen::Screen(){
 	//buf = (uint8_t(*)[COLS])RAM::malloc(ROWS * COLS);
-	//pinMode(DISP_CS, OUTPUT);
-	//pinMode(DISP_DC, OUTPUT);
 	SPI.begin();
 	spiSetting =  SPISettings(16000000, MSBFIRST, SPI_MODE0);
 	pinMode(6, OUTPUT);
@@ -126,31 +124,19 @@ uint8_t Screen::testDraw(DisplayObject* dispObj){
 		return 0;
 	
 	my_object.memory = dispObj->getMemory();
-		
-	if(my_object.memory == PGMEM){
-		my_object.width = pgm_read_byte(my_object.image);
-		my_object.height = pgm_read_byte(my_object.image + 1);
-	}
-	else if(my_object.memory == SPIMEM){
-		my_object.width = RAM::read(my_object.image);
-		my_object.height = RAM::read(my_object.image + 1);
-	}
-	else{
-		return 0;
-	}
-	
+	my_object.width = dispObj->getCanvasWidth();
+	my_object.height = dispObj->getCanvasHeight();
+
 	my_object.x = dispObj->getGlobalX();
 	my_object.y = dispObj->getGlobalY();
 	
 	if((my_object.x + my_object.width) <= 0){ return 0; }
 	if(my_object.x >= COLS){ return 0; }
 	
-	if(my_object.height == 0){ return 0; }
-	my_object.height *= 8;
-
+	if(my_object.height == 0){ return 0; } // TO DO: yüksekliği 0 ile 8 arasında olanların yüksekliği 8 e ayarlanacak
 	if((int)(my_object.y + my_object.height) <= 0){ return 0; }
 	if(my_object.y >= ROWS*8){ return 0; }	
-	
+	if(my_object.height < 8) { my_object.height = 8; }
 	my_object.dispObj = dispObj;
 	
 	return 1;
@@ -238,10 +224,10 @@ void Screen::draw(){ // draw after testDraw!!
 	OVERDRAW:
 	image_start_row = image_start_row_copy;
 	if(maskType == IMAGE_NO_MASK || maskType == IMAGE_AUTO_MASK){
-		image_array = (uint8_t(*)[my_object.width])(my_object.image + 2);
+		image_array = (uint8_t(*)[my_object.width])(my_object.image + 4);
 	}
 	else if(maskType == IMAGE_SELF_MASK){
-		image_array = (uint8_t(*)[my_object.width])(my_object.image + 2 + my_object.width * (my_object.height / 8));
+		image_array = (uint8_t(*)[my_object.width])(my_object.image + 4 + my_object.width * (my_object.height / 8));
 	}
 	else{ //IMAGE_EXTERNAL_MASK
 		image_array = (uint8_t(*)[my_object.width])my_object.dispObj->getExternalMask();
@@ -263,7 +249,6 @@ void Screen::draw(){ // draw after testDraw!!
 			else if(my_object.memory == PGMEM)
 				readArrayPgm(imageCurAdd, temp_image, visible_width);		
 		}
-		
 		
 		if(maskType == IMAGE_NO_MASK){
 			if(rows >= 0){	

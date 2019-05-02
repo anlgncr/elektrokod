@@ -30,6 +30,14 @@ class FileHandler
 		*/
 		FileHandler();
 		
+		uint16_t checkFileError();
+		uint16_t calculateFileSize(uint16_t fileIndex);
+		
+		/*
+			Dosyanın adını RAM'den aldığı 10 bytelık veriyle değiştirir.
+		*/
+		void renameFileByIndex(uint16_t fileIndex, uint8_t* name);
+		
 		/*
 			fileName : dosyanın adı (SRAM)
 			Verilen isimle yeni bir dosya oluşturur. Dosya adı 10 karakteri geçmemeli(Nokta da dahil).
@@ -51,7 +59,7 @@ class FileHandler
 		/*
 			Dosyanın boyutunu değiştirir.
 		*/
-		void setFileSize(FILE* file, uint16_t size);
+		uint16_t setFileSizeByIndex(uint16_t fileIndex, uint16_t size);
 		
 		/*
 			Dosyayı directory'deki sırasına göre döndürür.

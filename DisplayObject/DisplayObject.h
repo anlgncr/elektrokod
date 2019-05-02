@@ -4,6 +4,7 @@
 #include "RAM.h"
 #include "Button.h"
 #include "EventNames.h"
+#include "EventArgs.h"
 
 #define NAME_MAX_LENGTH 15
 #define COLLIDER_RECTANGLE 0
@@ -14,20 +15,25 @@
 #define IMAGE_SELF_MASK 2
 #define IMAGE_EXTERNAL_MASK 3
 
+const uint8_t noImage[] PROGMEM = { 16, 0, 8, 0,
+  0xFF, 0x81, 0xC3, 0xC3, 0xA5, 0xA5, 0x99, 0x99, 0x99, 0x99, 0xA5, 0xA5, 0xC3, 0xC3, 0x81, 0xFF
+};
+
 class Manager;
 class DisplayObject{
 	public:		
 		DisplayObject(uint8_t);
-		typedef void(*eventFunction)(DisplayObject*);
-		
-		
+		typedef void(*eventFunction)(EventArgs*);
+
+		// Displayobject'in pozisyonunu zamana göre değiştirir.
+		// Saniyede x piksel yer değiştir.
 		void moveX(int16_t);
 		void moveY(int16_t);
 		
 		void dispatchEvent(uint8_t);
-		void dispatchEvent(uint8_t, DisplayObject*);
+		void dispatchEvent(EventArgs*);
 		void dispatchEventAll(uint8_t);
-		void dispatchEventAll(uint8_t, DisplayObject*);
+		void dispatchEventAll(EventArgs*);
 		void addEventListener(uint8_t, eventFunction);
 		void removeEventListener(uint8_t);
 		
@@ -42,6 +48,8 @@ class DisplayObject{
 		
 		uint8_t hitTest(DisplayObject*);
 		uint16_t distanceTo(DisplayObject*);
+		
+		void applyChildChanges();
 		
 		void setId(uint16_t);
 		void setName(char*);
@@ -74,15 +82,15 @@ class DisplayObject{
 		uint16_t getId();
 		void getName(char*, uint8_t);
 		DisplayObject* getParent();
-		DisplayObject* contains(DisplayObject*);
+		bool contains(DisplayObject*);
 		DisplayObject* getChildAt(uint8_t);
 		uint8_t* getImage();
 		int16_t getX();
 		int16_t getY();
 		uint16_t getWidth();
 		uint16_t getHeight();
-		uint8_t getCanvasWidth();
-		uint8_t getCanvasHeight();
+		uint16_t getCanvasWidth();
+		uint16_t getCanvasHeight();
 		int16_t* getXRef();
 		int16_t* getYRef();
 		int16_t getGlobalX();
@@ -102,11 +110,8 @@ class DisplayObject{
 		uint8_t getEventInfo();
 		uint8_t* getExternalMask();
 		void writeInfo();
-		
-		void applyChildChanges();
-		
+
 	private:
-	
 		/*
 			eventFunction function -> Nesnenin çağıracağı fonksiyon (Fonksiyon static olmalı)
 			uint8_t event -> Nesnenin dinlediği olayın adı
@@ -170,7 +175,7 @@ class DisplayObject{
 			uint8_t visibility;
 			uint8_t memory;
 			uint8_t drawing;
-			uint8_t eventInfo;
+			//uint8_t eventInfo;
 			eventObject **events;
 			uint8_t eventSize;
 			uint8_t eventCount;
@@ -188,7 +193,7 @@ class DisplayObject{
 		void disposeChild();
 		uint16_t getRadius();
 		
-		void updateEvent(uint8_t, DisplayObject*);
+		void updateEvent(EventArgs*);
 		
 		void setChildIndexChanged(uint8_t);
 		uint8_t getChildIndexChanged();

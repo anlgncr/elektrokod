@@ -19,7 +19,8 @@
 #define MODE_SEQ 0x40
 #define MODE_PAGE 0x80
 
-#define CS_RAM1 2
+#define CS_RAM1 1
+#define CS_RAM2 2
 #define DECODER_MASK 0xFC
 
 class RAM{
@@ -56,7 +57,11 @@ class RAM{
 		static void endSeqWrite();
 		
 		static void* malloc(uint16_t);
-		static uint8_t* pointer;
+		static void* mallocStack(uint16_t);
+		static void popStack();
+		
+		static uint8_t* heap_pointer;
+		static uint8_t* stack_pointer;
 		static SPISettings spiSetting;
 };
 #endif

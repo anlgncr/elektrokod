@@ -60,7 +60,7 @@ class Screen{
 		struct object{
 			DisplayObject *dispObj;
 			uint8_t *image;
-			uint8_t width;
+			uint16_t width;
 			uint16_t height;
 			int16_t x;
 			int16_t y;
